@@ -13,7 +13,6 @@
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [
-    "chci",
     "ihub",
     "api",
     "backend"

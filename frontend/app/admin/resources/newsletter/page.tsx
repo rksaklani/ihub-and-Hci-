@@ -1,18 +1,24 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  useGetNewslettersQuery,
+  useCreateNewsletterMutation,
+  useUpdateNewsletterMutation,
+  useDeleteNewsletterMutation,
+} from '@/lib/store/api'
 
 interface Newsletter {
-  id: string
+  _id?: string
   title: string
-  pdf: string | null
-  image: string | null
-  link: string | null
+  pdf?: string | null
+  image?: string | null
+  link?: string | null
 }
 
 export default function NewsletterAdmin() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [newsletters, setNewsletters] = useState<Newsletter[]>([])
+  const [editingItem, setEditingItem] = useState<Newsletter | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     pdf: null as File | null,
@@ -21,7 +27,14 @@ export default function NewsletterAdmin() {
   })
   const [pdfPreview, setPdfPreview] = useState<string | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { data, isLoading, error, refetch } = useGetNewslettersQuery()
+  const [createNewsletter, { isLoading: isCreating }] = useCreateNewsletterMutation()
+  const [updateNewsletter, { isLoading: isUpdating }] = useUpdateNewsletterMutation()
+  const [deleteNewsletter] = useDeleteNewsletterMutation()
+
+  const newsletters = data?.data || []
+  const isSubmitting = isCreating || isUpdating
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -71,7 +84,6 @@ export default function NewsletterAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
 
     try {
       let pdfBase64 = null
@@ -81,6 +93,8 @@ export default function NewsletterAdmin() {
           reader.onloadend = () => resolve(reader.result as string)
           reader.readAsDataURL(formData.pdf!)
         })
+      } else if (editingItem?.pdf) {
+        pdfBase64 = editingItem.pdf
       }
 
       let imageBase64 = null
@@ -90,61 +104,72 @@ export default function NewsletterAdmin() {
           reader.onloadend = () => resolve(reader.result as string)
           reader.readAsDataURL(formData.image!)
         })
+      } else if (editingItem?.image) {
+        imageBase64 = editingItem.image
       }
 
-      const newNewsletter: Newsletter = {
-        id: Date.now().toString(),
+      const newsletterData = {
         title: formData.title,
         pdf: pdfBase64,
         image: imageBase64,
         link: formData.link || null,
       }
 
-      setNewsletters(prev => [...prev, newNewsletter])
+      if (editingItem?._id) {
+        await updateNewsletter({ id: editingItem._id, ...newsletterData }).unwrap()
+      } else {
+        await createNewsletter(newsletterData).unwrap()
+      }
       
-      // TODO: Add API call to submit the form data
-      // await fetch('/api/newsletters', { method: 'POST', body: JSON.stringify(newNewsletter) })
-      
-      // Reset form and close modal
-      setFormData({
-        title: '',
-        pdf: null,
-        image: null,
-        link: '',
-      })
-      setPdfPreview(null)
-      setImagePreview(null)
+      refetch()
+      resetForm()
       setIsModalOpen(false)
-      
-      // Show success message
-      alert('Newsletter added successfully!')
-    } catch (error) {
-      console.error('Error adding newsletter:', error)
-      alert('Failed to add newsletter. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+      alert(editingItem ? 'Newsletter updated successfully!' : 'Newsletter added successfully!')
+    } catch (error: any) {
+      console.error('Error saving newsletter:', error)
+      alert(error?.data?.message || 'Failed to save newsletter. Please try again.')
     }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      pdf: null,
+      image: null,
+      link: '',
+    })
+    setPdfPreview(null)
+    setImagePreview(null)
+    setEditingItem(null)
   }
 
   const handleCloseModal = () => {
-    if (!isSubmitting) {
-      setIsModalOpen(false)
-      setFormData({
-        title: '',
-        pdf: null,
-        image: null,
-        link: '',
-      })
-      setPdfPreview(null)
-      setImagePreview(null)
-    }
+    setIsModalOpen(false)
+    resetForm()
   }
 
-  const handleDelete = (id: string) => {
+  const handleEdit = (newsletter: Newsletter) => {
+    setEditingItem(newsletter)
+    setFormData({
+      title: newsletter.title,
+      pdf: null,
+      image: null,
+      link: newsletter.link || '',
+    })
+    setPdfPreview(newsletter.pdf)
+    setImagePreview(newsletter.image)
+    setIsModalOpen(true)
+  }
+
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this newsletter?')) {
-      setNewsletters(prev => prev.filter(newsletter => newsletter.id !== id))
-      // TODO: Add API call to delete
-      // await fetch(`/api/newsletters/${id}`, { method: 'DELETE' })
+      try {
+        await deleteNewsletter(id).unwrap()
+        refetch()
+        alert('Newsletter deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
     }
   }
 
@@ -167,7 +192,17 @@ export default function NewsletterAdmin() {
           </button>
         </div>
 
-        {newsletters.length === 0 ? (
+        {error ? (
+          <div className="text-center py-12 text-red-500">
+            <i className="fas fa-exclamation-circle text-4xl mb-4"></i>
+            <p>Error loading data. Please try again.</p>
+          </div>
+        ) : isLoading ? (
+          <div className="text-center py-12 text-gray-500">
+            <i className="fas fa-spinner fa-spin text-4xl mb-4"></i>
+            <p>Loading...</p>
+          </div>
+        ) : newsletters.length === 0 ? (
           <div className="text-center py-12 text-gray-500">
             <i className="fas fa-newspaper text-4xl mb-4"></i>
             <p>No newsletters added yet</p>
@@ -175,7 +210,7 @@ export default function NewsletterAdmin() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {newsletters.map((newsletter) => (
-              <div key={newsletter.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-lg transition-shadow">
+              <div key={newsletter._id} className="p-4 border border-gray-200 rounded-lg hover:shadow-lg transition-shadow">
                 {newsletter.image && (
                   <div className="w-full h-48 mb-3 overflow-hidden bg-gray-200 rounded-lg">
                     <img
@@ -192,13 +227,22 @@ export default function NewsletterAdmin() {
                 )}
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="text-lg font-bold text-primary flex-1">{newsletter.title}</h3>
-                  <button
-                    onClick={() => handleDelete(newsletter.id)}
-                    className="ml-2 text-red-500 hover:text-red-700 transition-colors"
-                    title="Delete newsletter"
-                  >
-                    <i className="fas fa-trash"></i>
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(newsletter)}
+                      className="text-blue-500 hover:text-blue-700 transition-colors"
+                      title="Edit newsletter"
+                    >
+                      <i className="fas fa-edit"></i>
+                    </button>
+                    <button
+                      onClick={() => newsletter._id && handleDelete(newsletter._id)}
+                      className="text-red-500 hover:text-red-700 transition-colors"
+                      title="Delete newsletter"
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </div>
                 </div>
                 <div className="space-y-2">
                   {newsletter.pdf && (
@@ -235,7 +279,9 @@ export default function NewsletterAdmin() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 rounded-t-2xl">
-              <h2 className="text-2xl font-bold text-gray-900">Add Newsletter</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingItem ? 'Edit Newsletter' : 'Add Newsletter'}
+              </h2>
               <button
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
@@ -356,12 +402,12 @@ export default function NewsletterAdmin() {
                   {isSubmitting ? (
                     <>
                       <i className="mr-2 fas fa-spinner fa-spin"></i>
-                      Submitting...
+                      {editingItem ? 'Updating...' : 'Submitting...'}
                     </>
                   ) : (
                     <>
                       <i className="mr-2 fas fa-check"></i>
-                      Submit
+                      {editingItem ? 'Update' : 'Submit'}
                     </>
                   )}
                 </button>

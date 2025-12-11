@@ -56,6 +56,12 @@ export const apiSlice = createApi({
     'ProcurementPolicy',
     'AuditReport',
     'SkillDevelopment',
+    'BoardMember',
+    'Advisor',
+    'GoverningBodyMember',
+    'TeamMember',
+    'FacultyProject',
+    'AffiliatedFaculty',
   ],
   endpoints: (builder) => ({
     // Courses
@@ -688,6 +694,180 @@ export const apiSlice = createApi({
       }),
       invalidatesTags: ['SkillDevelopment'],
     }),
+
+    // Team - Board Members
+    getBoardMembers: builder.query({
+      query: () => '/team/board-members',
+      providesTags: ['BoardMember'],
+    }),
+    createBoardMember: builder.mutation({
+      query: (data) => ({
+        url: '/team/board-members',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['BoardMember'],
+    }),
+    updateBoardMember: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/team/board-members/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['BoardMember'],
+    }),
+    deleteBoardMember: builder.mutation({
+      query: (id) => ({
+        url: `/team/board-members/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['BoardMember'],
+    }),
+
+    // Team - Advisors
+    getAdvisors: builder.query({
+      query: () => '/team/advisors',
+      providesTags: ['Advisor'],
+    }),
+    createAdvisor: builder.mutation({
+      query: (data) => ({
+        url: '/team/advisors',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['Advisor'],
+    }),
+    updateAdvisor: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/team/advisors/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['Advisor'],
+    }),
+    deleteAdvisor: builder.mutation({
+      query: (id) => ({
+        url: `/team/advisors/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Advisor'],
+    }),
+
+    // Team - Governing Body
+    getGoverningBodyMembers: builder.query({
+      query: () => '/team/governing-body',
+      providesTags: ['GoverningBodyMember'],
+    }),
+    createGoverningBodyMember: builder.mutation({
+      query: (data) => ({
+        url: '/team/governing-body',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['GoverningBodyMember'],
+    }),
+    updateGoverningBodyMember: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/team/governing-body/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['GoverningBodyMember'],
+    }),
+    deleteGoverningBodyMember: builder.mutation({
+      query: (id) => ({
+        url: `/team/governing-body/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['GoverningBodyMember'],
+    }),
+
+    // Team - Team Members
+    getTeamMembers: builder.query({
+      query: () => '/team/members',
+      providesTags: ['TeamMember'],
+    }),
+    createTeamMember: builder.mutation({
+      query: (data) => ({
+        url: '/team/members',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['TeamMember'],
+    }),
+    updateTeamMember: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/team/members/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['TeamMember'],
+    }),
+    deleteTeamMember: builder.mutation({
+      query: (id) => ({
+        url: `/team/members/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['TeamMember'],
+    }),
+
+    // Team - Faculty Projects
+    getFacultyProjects: builder.query({
+      query: () => '/team/faculty-projects',
+      providesTags: ['FacultyProject'],
+    }),
+    createFacultyProject: builder.mutation({
+      query: (data) => ({
+        url: '/team/faculty-projects',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['FacultyProject'],
+    }),
+    updateFacultyProject: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/team/faculty-projects/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['FacultyProject'],
+    }),
+    deleteFacultyProject: builder.mutation({
+      query: (id) => ({
+        url: `/team/faculty-projects/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['FacultyProject'],
+    }),
+
+    // Team - Affiliated Faculty
+    getAffiliatedFaculty: builder.query({
+      query: () => '/team/affiliated-faculty',
+      providesTags: ['AffiliatedFaculty'],
+    }),
+    createAffiliatedFaculty: builder.mutation({
+      query: (data) => ({
+        url: '/team/affiliated-faculty',
+        method: 'POST',
+        body: data,
+      }),
+      invalidatesTags: ['AffiliatedFaculty'],
+    }),
+    updateAffiliatedFaculty: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/team/affiliated-faculty/${id}`,
+        method: 'PUT',
+        body: data,
+      }),
+      invalidatesTags: ['AffiliatedFaculty'],
+    }),
+    deleteAffiliatedFaculty: builder.mutation({
+      query: (id) => ({
+        url: `/team/affiliated-faculty/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['AffiliatedFaculty'],
+    }),
   }),
 });
 
@@ -795,6 +975,31 @@ export const {
   useCreateSkillDevelopmentMutation,
   useUpdateSkillDevelopmentMutation,
   useDeleteSkillDevelopmentMutation,
+  // Team
+  useGetBoardMembersQuery,
+  useCreateBoardMemberMutation,
+  useUpdateBoardMemberMutation,
+  useDeleteBoardMemberMutation,
+  useGetAdvisorsQuery,
+  useCreateAdvisorMutation,
+  useUpdateAdvisorMutation,
+  useDeleteAdvisorMutation,
+  useGetGoverningBodyMembersQuery,
+  useCreateGoverningBodyMemberMutation,
+  useUpdateGoverningBodyMemberMutation,
+  useDeleteGoverningBodyMemberMutation,
+  useGetTeamMembersQuery,
+  useCreateTeamMemberMutation,
+  useUpdateTeamMemberMutation,
+  useDeleteTeamMemberMutation,
+  useGetFacultyProjectsQuery,
+  useCreateFacultyProjectMutation,
+  useUpdateFacultyProjectMutation,
+  useDeleteFacultyProjectMutation,
+  useGetAffiliatedFacultyQuery,
+  useCreateAffiliatedFacultyMutation,
+  useUpdateAffiliatedFacultyMutation,
+  useDeleteAffiliatedFacultyMutation,
 } = apiSlice;
 
 export default apiSlice;

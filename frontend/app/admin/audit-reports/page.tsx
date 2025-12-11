@@ -1,24 +1,34 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  useGetAuditReportsQuery,
+  useCreateAuditReportMutation,
+  useDeleteAuditReportMutation,
+} from '@/lib/store/api'
 
 interface AuditReport {
-  id: string
+  _id?: string
   session: string
   pdf: string
-  fileName: string
-  fileSize: number
+  fileName?: string
+  fileSize?: number
 }
 
 export default function AuditReportsAdmin() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [reports, setReports] = useState<AuditReport[]>([])
   const [formData, setFormData] = useState({
     session: '',
     pdf: null as File | null,
   })
   const [pdfPreview, setPdfPreview] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { data, isLoading, error, refetch } = useGetAuditReportsQuery()
+  const [createAuditReport, { isLoading: isCreating }] = useCreateAuditReportMutation()
+  const [deleteAuditReport] = useDeleteAuditReportMutation()
+
+  const reports = data?.data || []
+  const isSubmitting = isCreating
 
   // Generate session options starting from 2023
   const currentYear = new Date().getFullYear()
@@ -60,7 +70,6 @@ export default function AuditReportsAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
 
     try {
       if (!formData.pdf) {
@@ -82,18 +91,13 @@ export default function AuditReportsAdmin() {
         })
       }
 
-      const newReport: AuditReport = {
-        id: Date.now().toString(),
+      await createAuditReport({
         session: formData.session,
-        pdf: pdfBase64!,
+        pdf: pdfBase64,
         fileName: formData.pdf.name,
-        fileSize: formData.pdf.size,
-      }
-
-      setReports(prev => [...prev, newReport])
+      }).unwrap()
       
-      // TODO: Add API call to submit the form data
-      // await fetch('/api/audit-reports', { method: 'POST', body: JSON.stringify(newReport) })
+      refetch()
       
       // Reset form and close modal
       setFormData({
@@ -105,11 +109,9 @@ export default function AuditReportsAdmin() {
       
       // Show success message
       alert('Audit report added successfully!')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding report:', error)
-      alert('Failed to add report. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+      alert(error?.data?.message || 'Failed to add report. Please try again.')
     }
   }
 
@@ -124,11 +126,15 @@ export default function AuditReportsAdmin() {
     }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this audit report?')) {
-      setReports(prev => prev.filter(report => report.id !== id))
-      // TODO: Add API call to delete
-      // await fetch(`/api/audit-reports/${id}`, { method: 'DELETE' })
+      try {
+        await deleteAuditReport(id).unwrap()
+        refetch()
+        alert('Report deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
     }
   }
 
@@ -161,7 +167,17 @@ export default function AuditReportsAdmin() {
           </button>
         </div>
 
-        {reports.length === 0 ? (
+        {error ? (
+          <div className="py-16 text-center text-red-500">
+            <i className="fas fa-exclamation-circle text-4xl mb-4"></i>
+            <p>Error loading data. Please try again.</p>
+          </div>
+        ) : isLoading ? (
+          <div className="py-16 text-center text-gray-500">
+            <i className="fas fa-spinner fa-spin text-4xl mb-4"></i>
+            <p>Loading...</p>
+          </div>
+        ) : reports.length === 0 ? (
           <div className="py-16 text-center text-gray-500">
             <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5">
               <i className="text-4xl fas fa-chart-line text-primary"></i>
@@ -172,7 +188,7 @@ export default function AuditReportsAdmin() {
         ) : (
           <div className="space-y-4">
             {reports.map((report) => (
-              <div key={report.id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
+              <div key={report._id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
                 <div className="flex items-center justify-between gap-4">
                   <div className="flex items-center gap-4 flex-1">
                     <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
@@ -184,7 +200,7 @@ export default function AuditReportsAdmin() {
                           Financial Year {report.session}
                         </h3>
                         <button
-                          onClick={() => handleDelete(report.id)}
+                          onClick={() => report._id && handleDelete(report._id)}
                           className="ml-2 text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
                           title="Delete report"
                         >
@@ -192,9 +208,11 @@ export default function AuditReportsAdmin() {
                         </button>
                       </div>
                       <p className="text-sm text-gray-600">Audited Final Accounts</p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        {report.fileName} • {(report.fileSize / 1024 / 1024).toFixed(2)} MB
-                      </p>
+                      {report.fileName && report.fileSize && (
+                        <p className="text-xs text-gray-500 mt-1">
+                          {report.fileName} • {(report.fileSize / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      )}
                     </div>
                   </div>
                   <a

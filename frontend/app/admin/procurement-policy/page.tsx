@@ -1,22 +1,32 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  useGetProcurementPoliciesQuery,
+  useCreateProcurementPolicyMutation,
+  useDeleteProcurementPolicyMutation,
+} from '@/lib/store/api'
 
 interface ProcurementDocument {
-  id: string
+  _id?: string
   pdf: string
-  fileName: string
-  fileSize: number
+  fileName?: string
+  fileSize?: number
 }
 
 export default function ProcurementPolicyAdmin() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [documents, setDocuments] = useState<ProcurementDocument[]>([])
   const [formData, setFormData] = useState({
     pdf: null as File | null,
   })
   const [pdfPreview, setPdfPreview] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { data, isLoading, error, refetch } = useGetProcurementPoliciesQuery()
+  const [createProcurementPolicy, { isLoading: isCreating }] = useCreateProcurementPolicyMutation()
+  const [deleteProcurementPolicy] = useDeleteProcurementPolicyMutation()
+
+  const documents = data?.data || []
+  const isSubmitting = isCreating
 
   const handlePdfChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -39,7 +49,6 @@ export default function ProcurementPolicyAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
 
     try {
       if (!formData.pdf) {
@@ -56,17 +65,12 @@ export default function ProcurementPolicyAdmin() {
         })
       }
 
-      const newDocument: ProcurementDocument = {
-        id: Date.now().toString(),
-        pdf: pdfBase64!,
+      await createProcurementPolicy({
+        pdf: pdfBase64,
         fileName: formData.pdf.name,
-        fileSize: formData.pdf.size,
-      }
-
-      setDocuments(prev => [...prev, newDocument])
+      }).unwrap()
       
-      // TODO: Add API call to submit the form data
-      // await fetch('/api/procurement-policy', { method: 'POST', body: JSON.stringify(newDocument) })
+      refetch()
       
       // Reset form and close modal
       setFormData({
@@ -77,11 +81,9 @@ export default function ProcurementPolicyAdmin() {
       
       // Show success message
       alert('Document added successfully!')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding document:', error)
-      alert('Failed to add document. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+      alert(error?.data?.message || 'Failed to add document. Please try again.')
     }
   }
 
@@ -95,11 +97,15 @@ export default function ProcurementPolicyAdmin() {
     }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this document?')) {
-      setDocuments(prev => prev.filter(doc => doc.id !== id))
-      // TODO: Add API call to delete
-      // await fetch(`/api/procurement-policy/${id}`, { method: 'DELETE' })
+      try {
+        await deleteProcurementPolicy(id).unwrap()
+        refetch()
+        alert('Document deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
     }
   }
 
@@ -132,7 +138,17 @@ export default function ProcurementPolicyAdmin() {
           </button>
         </div>
 
-        {documents.length === 0 ? (
+        {error ? (
+          <div className="py-16 text-center text-red-500">
+            <i className="fas fa-exclamation-circle text-4xl mb-4"></i>
+            <p>Error loading data. Please try again.</p>
+          </div>
+        ) : isLoading ? (
+          <div className="py-16 text-center text-gray-500">
+            <i className="fas fa-spinner fa-spin text-4xl mb-4"></i>
+            <p>Loading...</p>
+          </div>
+        ) : documents.length === 0 ? (
           <div className="py-16 text-center text-gray-500">
             <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5">
               <i className="text-4xl fas fa-file-invoice text-primary"></i>
@@ -143,25 +159,27 @@ export default function ProcurementPolicyAdmin() {
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {documents.map((document) => (
-              <div key={document.id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
+              <div key={document._id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
                 <div className="flex items-center gap-4 mb-4">
                   <div className="w-16 h-16 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0">
                     <i className="fas fa-file-pdf text-primary text-2xl"></i>
                   </div>
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-1">
-                      <h3 className="text-lg font-bold text-primary truncate">{document.fileName}</h3>
+                      <h3 className="text-lg font-bold text-primary truncate">{document.fileName || 'Document'}</h3>
                       <button
-                        onClick={() => handleDelete(document.id)}
+                        onClick={() => document._id && handleDelete(document._id)}
                         className="ml-2 text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
                         title="Delete document"
                       >
                         <i className="fas fa-trash text-sm"></i>
                       </button>
                     </div>
-                    <p className="text-xs text-gray-600">
-                      {(document.fileSize / 1024 / 1024).toFixed(2)} MB
-                    </p>
+                    {document.fileSize && (
+                      <p className="text-xs text-gray-600">
+                        {(document.fileSize / 1024 / 1024).toFixed(2)} MB
+                      </p>
+                    )}
                   </div>
                 </div>
                 <a

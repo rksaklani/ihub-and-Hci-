@@ -1,6 +1,26 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  useGetBoardMembersQuery,
+  useCreateBoardMemberMutation,
+  useDeleteBoardMemberMutation,
+  useGetAdvisorsQuery,
+  useCreateAdvisorMutation,
+  useDeleteAdvisorMutation,
+  useGetGoverningBodyMembersQuery,
+  useCreateGoverningBodyMemberMutation,
+  useDeleteGoverningBodyMemberMutation,
+  useGetTeamMembersQuery,
+  useCreateTeamMemberMutation,
+  useDeleteTeamMemberMutation,
+  useGetFacultyProjectsQuery,
+  useCreateFacultyProjectMutation,
+  useDeleteFacultyProjectMutation,
+  useGetAffiliatedFacultyQuery,
+  useCreateAffiliatedFacultyMutation,
+  useDeleteAffiliatedFacultyMutation,
+} from '@/lib/store/api'
 
 // Interfaces for different team member types
 interface BoardMember {
@@ -61,13 +81,38 @@ export default function TeamAdmin() {
   const [isFacultyProjectModalOpen, setIsFacultyProjectModalOpen] = useState(false)
   const [isFacultyMemberModalOpen, setIsFacultyMemberModalOpen] = useState(false)
 
-  // State for data
-  const [boardMembers, setBoardMembers] = useState<BoardMember[]>([])
-  const [advisors, setAdvisors] = useState<Advisor[]>([])
-  const [governingBodyMembers, setGoverningBodyMembers] = useState<GoverningBodyMember[]>([])
-  const [teamMembers, setTeamMembers] = useState<TeamMember[]>([])
-  const [projects, setProjects] = useState<Project[]>([])
-  const [facultyMembers, setFacultyMembers] = useState<FacultyMember[]>([])
+  // RTK Query hooks
+  const { data: boardData, refetch: refetchBoard } = useGetBoardMembersQuery()
+  const [createBoardMember, { isLoading: isCreatingBoard }] = useCreateBoardMemberMutation()
+  const [deleteBoardMember] = useDeleteBoardMemberMutation()
+
+  const { data: advisorsData, refetch: refetchAdvisors } = useGetAdvisorsQuery()
+  const [createAdvisor, { isLoading: isCreatingAdvisor }] = useCreateAdvisorMutation()
+  const [deleteAdvisor] = useDeleteAdvisorMutation()
+
+  const { data: governingBodyData, refetch: refetchGoverningBody } = useGetGoverningBodyMembersQuery()
+  const [createGoverningBodyMember, { isLoading: isCreatingGoverningBody }] = useCreateGoverningBodyMemberMutation()
+  const [deleteGoverningBodyMember] = useDeleteGoverningBodyMemberMutation()
+
+  const { data: teamMembersData, refetch: refetchTeamMembers } = useGetTeamMembersQuery()
+  const [createTeamMember, { isLoading: isCreatingTeamMember }] = useCreateTeamMemberMutation()
+  const [deleteTeamMember] = useDeleteTeamMemberMutation()
+
+  const { data: projectsData, refetch: refetchProjects } = useGetFacultyProjectsQuery()
+  const [createFacultyProject, { isLoading: isCreatingProject }] = useCreateFacultyProjectMutation()
+  const [deleteFacultyProject] = useDeleteFacultyProjectMutation()
+
+  const { data: facultyData, refetch: refetchFaculty } = useGetAffiliatedFacultyQuery()
+  const [createAffiliatedFaculty, { isLoading: isCreatingFaculty }] = useCreateAffiliatedFacultyMutation()
+  const [deleteAffiliatedFaculty] = useDeleteAffiliatedFacultyMutation()
+
+  // Extract data from queries
+  const boardMembers = boardData?.data || []
+  const advisors = advisorsData?.data || []
+  const governingBodyMembers = governingBodyData?.data || []
+  const teamMembers = teamMembersData?.data || []
+  const projects = projectsData?.data || []
+  const facultyMembers = facultyData?.data || []
 
   // Form states
   const [boardFormData, setBoardFormData] = useState({
@@ -116,7 +161,7 @@ export default function TeamAdmin() {
   })
   const [facultyImagePreview, setFacultyImagePreview] = useState<string | null>(null)
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const isSubmitting = isCreatingBoard || isCreatingAdvisor || isCreatingGoverningBody || isCreatingTeamMember || isCreatingProject || isCreatingFaculty
 
   const tabs = [
     { id: 'board-of-directors', label: 'Board of Directors', icon: 'fas fa-user-tie' },
@@ -160,7 +205,6 @@ export default function TeamAdmin() {
   // Board of Directors handlers
   const handleBoardSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
     try {
       let imageBase64 = null
       if (boardFormData.image) {
@@ -170,20 +214,18 @@ export default function TeamAdmin() {
           reader.readAsDataURL(boardFormData.image!)
         })
       }
-      const newMember: BoardMember = {
-        id: Date.now().toString(),
+      await createBoardMember({
         name: boardFormData.name,
         image: imageBase64,
         linkedinUrl: boardFormData.linkedinUrl,
         description: boardFormData.description,
-      }
-      setBoardMembers(prev => [...prev, newMember])
+      }).unwrap()
+      refetchBoard()
       handleCloseBoardModal()
-    } catch (error) {
+      alert('Board member added successfully!')
+    } catch (error: any) {
       console.error('Error adding board member:', error)
-      alert('Failed to add board member')
-    } finally {
-      setIsSubmitting(false)
+      alert(error?.data?.message || 'Failed to add board member')
     }
   }
 
@@ -196,7 +238,6 @@ export default function TeamAdmin() {
   // Advisors handlers
   const handleAdvisorSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
     try {
       let imageBase64 = null
       if (advisorFormData.image) {
@@ -206,20 +247,18 @@ export default function TeamAdmin() {
           reader.readAsDataURL(advisorFormData.image!)
         })
       }
-      const newAdvisor: Advisor = {
-        id: Date.now().toString(),
+      await createAdvisor({
         name: advisorFormData.name,
         image: imageBase64,
         linkedinUrl: advisorFormData.linkedinUrl,
         description: advisorFormData.description,
-      }
-      setAdvisors(prev => [...prev, newAdvisor])
+      }).unwrap()
+      refetchAdvisors()
       handleCloseAdvisorModal()
-    } catch (error) {
+      alert('Advisor added successfully!')
+    } catch (error: any) {
       console.error('Error adding advisor:', error)
-      alert('Failed to add advisor')
-    } finally {
-      setIsSubmitting(false)
+      alert(error?.data?.message || 'Failed to add advisor')
     }
   }
 
@@ -232,7 +271,6 @@ export default function TeamAdmin() {
   // Governing Body handlers
   const handleGoverningBodySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
     try {
       let imageBase64 = null
       if (governingBodyFormData.image) {
@@ -242,20 +280,18 @@ export default function TeamAdmin() {
           reader.readAsDataURL(governingBodyFormData.image!)
         })
       }
-      const newMember: GoverningBodyMember = {
-        id: Date.now().toString(),
+      await createGoverningBodyMember({
         name: governingBodyFormData.name,
         image: imageBase64,
         linkedinUrl: governingBodyFormData.linkedinUrl,
         description: governingBodyFormData.description,
-      }
-      setGoverningBodyMembers(prev => [...prev, newMember])
+      }).unwrap()
+      refetchGoverningBody()
       handleCloseGoverningBodyModal()
-    } catch (error) {
+      alert('Member added successfully!')
+    } catch (error: any) {
       console.error('Error adding member:', error)
-      alert('Failed to add member')
-    } finally {
-      setIsSubmitting(false)
+      alert(error?.data?.message || 'Failed to add member')
     }
   }
 
@@ -268,7 +304,6 @@ export default function TeamAdmin() {
   // Team handlers
   const handleTeamSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
     try {
       let imageBase64 = null
       if (teamFormData.image) {
@@ -278,20 +313,18 @@ export default function TeamAdmin() {
           reader.readAsDataURL(teamFormData.image!)
         })
       }
-      const newMember: TeamMember = {
-        id: Date.now().toString(),
+      await createTeamMember({
         name: teamFormData.name,
         image: imageBase64,
         linkedinUrl: teamFormData.linkedinUrl,
         description: teamFormData.description,
-      }
-      setTeamMembers(prev => [...prev, newMember])
+      }).unwrap()
+      refetchTeamMembers()
       handleCloseTeamModal()
-    } catch (error) {
+      alert('Team member added successfully!')
+    } catch (error: any) {
       console.error('Error adding team member:', error)
-      alert('Failed to add team member')
-    } finally {
-      setIsSubmitting(false)
+      alert(error?.data?.message || 'Failed to add team member')
     }
   }
 
@@ -304,28 +337,24 @@ export default function TeamAdmin() {
   // Faculty Project handlers
   const handleFacultyProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
     try {
-      const newProject: Project = {
-        id: Date.now().toString(),
+      await createFacultyProject({
         name: facultyProjectFormData.name,
         description: facultyProjectFormData.description,
-      }
-      setProjects(prev => [...prev, newProject])
+      }).unwrap()
+      refetchProjects()
       setFacultyProjectFormData({ name: '', description: '' })
       setIsFacultyProjectModalOpen(false)
-    } catch (error) {
+      alert('Project added successfully!')
+    } catch (error: any) {
       console.error('Error adding project:', error)
-      alert('Failed to add project')
-    } finally {
-      setIsSubmitting(false)
+      alert(error?.data?.message || 'Failed to add project')
     }
   }
 
   // Faculty Member handlers
   const handleFacultyMemberSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
     try {
       let imageBase64 = null
       if (facultyMemberFormData.image) {
@@ -335,21 +364,19 @@ export default function TeamAdmin() {
           reader.readAsDataURL(facultyMemberFormData.image!)
         })
       }
-      const newMember: FacultyMember = {
-        id: Date.now().toString(),
+      await createAffiliatedFaculty({
         projectId: facultyMemberFormData.projectId,
         name: facultyMemberFormData.name,
         image: imageBase64,
         linkedinUrl: facultyMemberFormData.linkedinUrl,
         description: facultyMemberFormData.description,
-      }
-      setFacultyMembers(prev => [...prev, newMember])
+      }).unwrap()
+      refetchFaculty()
       handleCloseFacultyMemberModal()
-    } catch (error) {
+      alert('Faculty member added successfully!')
+    } catch (error: any) {
       console.error('Error adding faculty member:', error)
-      alert('Failed to add faculty member')
-    } finally {
-      setIsSubmitting(false)
+      alert(error?.data?.message || 'Failed to add faculty member')
     }
   }
 
@@ -360,15 +387,81 @@ export default function TeamAdmin() {
   }
 
   // Delete handlers
-  const handleDelete = (id: string, setState: React.Dispatch<React.SetStateAction<any[]>>, type: string) => {
-    if (confirm(`Are you sure you want to delete this ${type}?`)) {
-      setState((prev: any[]) => prev.filter((item: any) => item.id !== id))
+  const handleDeleteBoard = async (id: string) => {
+    if (confirm('Are you sure you want to delete this board member?')) {
+      try {
+        await deleteBoardMember(id).unwrap()
+        refetchBoard()
+        alert('Board member deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
+    }
+  }
+
+  const handleDeleteAdvisor = async (id: string) => {
+    if (confirm('Are you sure you want to delete this advisor?')) {
+      try {
+        await deleteAdvisor(id).unwrap()
+        refetchAdvisors()
+        alert('Advisor deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
+    }
+  }
+
+  const handleDeleteGoverningBody = async (id: string) => {
+    if (confirm('Are you sure you want to delete this member?')) {
+      try {
+        await deleteGoverningBodyMember(id).unwrap()
+        refetchGoverningBody()
+        alert('Member deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
+    }
+  }
+
+  const handleDeleteTeam = async (id: string) => {
+    if (confirm('Are you sure you want to delete this team member?')) {
+      try {
+        await deleteTeamMember(id).unwrap()
+        refetchTeamMembers()
+        alert('Team member deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
+    }
+  }
+
+  const handleDeleteProject = async (id: string) => {
+    if (confirm('Are you sure you want to delete this project?')) {
+      try {
+        await deleteFacultyProject(id).unwrap()
+        refetchProjects()
+        alert('Project deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
+    }
+  }
+
+  const handleDeleteFaculty = async (id: string) => {
+    if (confirm('Are you sure you want to delete this faculty member?')) {
+      try {
+        await deleteAffiliatedFaculty(id).unwrap()
+        refetchFaculty()
+        alert('Faculty member deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
     }
   }
 
   // Render member card component
   const renderMemberCard = (member: any, onDelete: () => void, type: string) => (
-    <div key={member.id} className="glass-strong rounded-xl p-6 border-2 border-primary/10 hover:shadow-lg transition-all duration-300">
+    <div key={member._id || member.id} className="glass-strong rounded-xl p-6 border-2 border-primary/10 hover:shadow-lg transition-all duration-300">
       {member.image && (
         <div className="w-24 h-24 rounded-full overflow-hidden mx-auto mb-4 border-2 border-primary/20">
           <img src={member.image} alt={member.name} className="w-full h-full object-cover" />
@@ -598,7 +691,7 @@ export default function TeamAdmin() {
                 {boardMembers.map((member) =>
                   renderMemberCard(
                     member,
-                    () => handleDelete(member.id, setBoardMembers, 'board member'),
+                    () => member._id && handleDeleteBoard(member._id),
                     'board member'
                   )
                 )}
@@ -636,7 +729,7 @@ export default function TeamAdmin() {
                 {advisors.map((member) =>
                   renderMemberCard(
                     member,
-                    () => handleDelete(member.id, setAdvisors, 'advisor'),
+                    () => member._id && handleDeleteAdvisor(member._id),
                     'advisor'
                   )
                 )}
@@ -674,7 +767,7 @@ export default function TeamAdmin() {
                 {governingBodyMembers.map((member) =>
                   renderMemberCard(
                     member,
-                    () => handleDelete(member.id, setGoverningBodyMembers, 'member'),
+                    () => member._id && handleDeleteGoverningBody(member._id),
                     'member'
                   )
                 )}
@@ -712,7 +805,7 @@ export default function TeamAdmin() {
                 {teamMembers.map((member) =>
                   renderMemberCard(
                     member,
-                    () => handleDelete(member.id, setTeamMembers, 'team member'),
+                    () => member._id && handleDeleteTeam(member._id),
                     'team member'
                   )
                 )}
@@ -757,7 +850,7 @@ export default function TeamAdmin() {
             ) : (
               <div className="space-y-8">
                 {projects.map((project) => {
-                  const projectMembers = facultyMembers.filter(m => m.projectId === project.id)
+                  const projectMembers = facultyMembers.filter(m => m.projectId?.toString() === project._id?.toString())
                   return (
                     <div key={project.id} className="glass-strong rounded-xl p-6 border-2 border-primary/10">
                       <div className="flex justify-between items-center mb-4">
@@ -768,7 +861,7 @@ export default function TeamAdmin() {
                           )}
                         </div>
                         <button
-                          onClick={() => handleDelete(project.id, setProjects, 'project')}
+                          onClick={() => project._id && handleDeleteProject(project._id)}
                           className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm"
                         >
                           <i className="fas fa-trash mr-1"></i>
@@ -780,7 +873,7 @@ export default function TeamAdmin() {
                           {projectMembers.map((member) =>
                             renderMemberCard(
                               member,
-                              () => handleDelete(member.id, setFacultyMembers, 'faculty member'),
+                              () => member._id && handleDeleteFaculty(member._id),
                               'faculty member'
                             )
                           )}
@@ -948,7 +1041,7 @@ export default function TeamAdmin() {
                 >
                   <option value="">Select a project</option>
                   {projects.map((project) => (
-                    <option key={project.id} value={project.id}>
+                    <option key={project._id} value={project._id}>
                       {project.name}
                     </option>
                   ))}

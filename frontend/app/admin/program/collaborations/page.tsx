@@ -1,18 +1,25 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  useGetCollaborationsQuery,
+  useCreateCollaborationMutation,
+  useUpdateCollaborationMutation,
+  useDeleteCollaborationMutation,
+} from '@/lib/store/api'
 
 interface Collaboration {
-  id: string
+  _id?: string
   title: string
   description: string
   link: string
   image: string | null
+  status?: 'active' | 'inactive'
 }
 
 export default function CollaborationsAdmin() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [collaborations, setCollaborations] = useState<Collaboration[]>([])
+  const [editingItem, setEditingItem] = useState<Collaboration | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -20,7 +27,13 @@ export default function CollaborationsAdmin() {
     image: null as File | null,
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { data, isLoading, error, refetch } = useGetCollaborationsQuery()
+  const [createItem, { isLoading: isCreating }] = useCreateCollaborationMutation()
+  const [updateItem, { isLoading: isUpdating }] = useUpdateCollaborationMutation()
+  const [deleteItem] = useDeleteCollaborationMutation()
+
+  const collaborations = data?.data || []
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -48,7 +61,6 @@ export default function CollaborationsAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
 
     try {
       let imageBase64 = null
@@ -60,58 +72,79 @@ export default function CollaborationsAdmin() {
         })
       }
 
-      const newCollaboration: Collaboration = {
-        id: Date.now().toString(),
+      const collaborationData = {
         title: formData.title,
         description: formData.description,
         link: formData.link,
         image: imageBase64,
+        status: 'active' as const,
       }
 
-      setCollaborations(prev => [...prev, newCollaboration])
-      
-      // TODO: Add API call to submit the form data
-      // await fetch('/api/collaborations', { method: 'POST', body: JSON.stringify(newCollaboration) })
-      
-      // Reset form and close modal
-      setFormData({
-        title: '',
-        description: '',
-        link: '',
-        image: null,
-      })
-      setImagePreview(null)
+      if (editingItem?._id) {
+        await updateItem({ id: editingItem._id, ...collaborationData }).unwrap()
+      } else {
+        await createItem(collaborationData).unwrap()
+      }
+
       setIsModalOpen(false)
-      
-      // Show success message
-      alert('Collaboration added successfully!')
-    } catch (error) {
-      console.error('Error adding collaboration:', error)
-      alert('Failed to add collaboration. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+      resetForm()
+      refetch()
+      alert(editingItem ? 'Updated successfully!' : 'Created successfully!')
+    } catch (error: any) {
+      console.error('Error saving collaboration:', error)
+      alert(error?.data?.message || 'Failed to save collaboration')
     }
+  }
+
+  const handleEdit = (item: Collaboration) => {
+    setEditingItem(item)
+    setFormData({
+      title: item.title,
+      description: item.description,
+      link: item.link,
+      image: null,
+    })
+    setImagePreview(item.image)
+    setIsModalOpen(true)
+  }
+
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this collaboration?')) {
+      try {
+        await deleteItem(id).unwrap()
+        refetch()
+        alert('Deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
+    }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      description: '',
+      link: '',
+      image: null,
+    })
+    setImagePreview(null)
+    setEditingItem(null)
   }
 
   const handleCloseModal = () => {
-    if (!isSubmitting) {
-      setIsModalOpen(false)
-      setFormData({
-        title: '',
-        description: '',
-        link: '',
-        image: null,
-      })
-      setImagePreview(null)
-    }
+    setIsModalOpen(false)
+    resetForm()
   }
 
-  const handleDelete = (id: string) => {
-    if (confirm('Are you sure you want to delete this collaboration?')) {
-      setCollaborations(prev => prev.filter(collab => collab.id !== id))
-      // TODO: Add API call to delete
-      // await fetch(`/api/collaborations/${id}`, { method: 'DELETE' })
-    }
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <i className="fas fa-spinner fa-spin text-4xl text-primary mb-4"></i>
+          <p className="text-gray-600">Loading...</p>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -143,7 +176,12 @@ export default function CollaborationsAdmin() {
           </button>
         </div>
 
-        {collaborations.length === 0 ? (
+        {error ? (
+          <div className="py-16 text-center text-red-500">
+            <i className="fas fa-exclamation-circle text-4xl mb-4"></i>
+            <p>Error loading data. Please try again.</p>
+          </div>
+        ) : collaborations.length === 0 ? (
           <div className="py-16 text-center text-gray-500">
             <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5">
               <i className="text-4xl fas fa-handshake text-primary"></i>
@@ -154,7 +192,7 @@ export default function CollaborationsAdmin() {
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {collaborations.map((collab) => (
-              <div key={collab.id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
+              <div key={collab._id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
                 {collab.image && (
                   <div className="w-full h-48 mb-3 overflow-hidden bg-gray-200 rounded-lg">
                     <img
@@ -173,13 +211,22 @@ export default function CollaborationsAdmin() {
                     )}
                     <h3 className="flex-1 text-lg font-bold text-primary">{collab.title}</h3>
                   </div>
-                  <button
-                    onClick={() => handleDelete(collab.id)}
-                    className="ml-2 text-red-500 transition-colors hover:text-red-700"
-                    title="Delete collaboration"
-                  >
-                    <i className="fas fa-trash"></i>
-                  </button>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => handleEdit(collab)}
+                      className="text-blue-500 transition-colors hover:text-blue-700"
+                      title="Edit collaboration"
+                    >
+                      <i className="fas fa-edit"></i>
+                    </button>
+                    <button
+                      onClick={() => collab._id && handleDelete(collab._id)}
+                      className="text-red-500 transition-colors hover:text-red-700"
+                      title="Delete collaboration"
+                    >
+                      <i className="fas fa-trash"></i>
+                    </button>
+                  </div>
                 </div>
                 <p className="mb-3 text-sm text-gray-700 line-clamp-3">{collab.description}</p>
                 {collab.link && (
@@ -204,10 +251,12 @@ export default function CollaborationsAdmin() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 rounded-t-2xl">
-              <h2 className="text-2xl font-bold text-gray-900">Add Collaboration</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingItem ? 'Edit Collaboration' : 'Add Collaboration'}
+              </h2>
               <button
                 onClick={handleCloseModal}
-                disabled={isSubmitting}
+                disabled={isCreating || isUpdating}
                 className="text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50"
               >
                 <i className="text-xl fas fa-times"></i>
@@ -294,25 +343,25 @@ export default function CollaborationsAdmin() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  disabled={isSubmitting}
+                  disabled={isCreating || isUpdating}
                   className="flex-1 px-6 py-3 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isCreating || isUpdating}
                   className="flex-1 px-6 py-3 text-white transition-colors rounded-lg bg-primary hover:bg-primary-dark disabled:opacity-50"
                 >
-                  {isSubmitting ? (
+                  {isCreating || isUpdating ? (
                     <>
                       <i className="mr-2 fas fa-spinner fa-spin"></i>
-                      Submitting...
+                      {editingItem ? 'Updating...' : 'Creating...'}
                     </>
                   ) : (
                     <>
                       <i className="mr-2 fas fa-check"></i>
-                      Submit
+                      {editingItem ? 'Update' : 'Submit'}
                     </>
                   )}
                 </button>

@@ -106,7 +106,6 @@
 // module.exports = app;
 
 
-
 const express = require('express');
 const cors = require('cors');
 const morgan = require('morgan');
@@ -122,19 +121,17 @@ connectDB();
 // Initialize Express app
 const app = express();
 
-// ----- FIXED CORS CONFIG -----
-app.use(cors({
-  origin:  process.env.FRONTEND_URL,
+// ----- FIXED (CLEAN + SAFE) CORS CONFIG -----
+const corsOptions = {
+  origin: process.env.FRONTEND_URL,
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
-}));
+};
 
-app.options("*", cors({
-  origin:  process.env.FRONTEND_URL,
-  credentials: true
-}));
-// --------------------------------
+app.use(cors(corsOptions));
+app.options("*", cors(corsOptions)); // Important: reuse EXACT SAME config
+// -------------------------------------------
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -166,6 +163,12 @@ const infrastructureRoutes = require('./routes/infrastructureRoutes');
 const procurementPolicyRoutes = require('./routes/procurementPolicyRoutes');
 const auditReportRoutes = require('./routes/auditReportRoutes');
 const skillDevelopmentRoutes = require('./routes/skillDevelopmentRoutes');
+const boardMemberRoutes = require('./routes/boardMemberRoutes');
+const advisorRoutes = require('./routes/advisorRoutes');
+const governingBodyRoutes = require('./routes/governingBodyRoutes');
+const teamMemberRoutes = require('./routes/teamMemberRoutes');
+const facultyProjectRoutes = require('./routes/facultyProjectRoutes');
+const affiliatedFacultyRoutes = require('./routes/affiliatedFacultyRoutes');
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -193,6 +196,12 @@ app.use('/api/infrastructure', infrastructureRoutes);
 app.use('/api/procurement-policy', procurementPolicyRoutes);
 app.use('/api/audit-reports', auditReportRoutes);
 app.use('/api/skill-development', skillDevelopmentRoutes);
+app.use('/api/team/board-members', boardMemberRoutes);
+app.use('/api/team/advisors', advisorRoutes);
+app.use('/api/team/governing-body', governingBodyRoutes);
+app.use('/api/team/members', teamMemberRoutes);
+app.use('/api/team/faculty-projects', facultyProjectRoutes);
+app.use('/api/team/affiliated-faculty', affiliatedFacultyRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

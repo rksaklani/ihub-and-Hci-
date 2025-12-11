@@ -1,9 +1,15 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  useGetTendersQuery,
+  useCreateTenderMutation,
+  useUpdateTenderMutation,
+  useDeleteTenderMutation,
+} from '@/lib/store/api'
 
 interface Tender {
-  id: string
+  _id?: string
   dated: string
   refNo: string
   details: string
@@ -21,7 +27,14 @@ interface Tender {
 
 export default function TendersAdmin() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [tenders, setTenders] = useState<Tender[]>([])
+  const [editingItem, setEditingItem] = useState<Tender | null>(null)
+
+  const { data, isLoading, error, refetch } = useGetTendersQuery()
+  const [createItem, { isLoading: isCreating }] = useCreateTenderMutation()
+  const [updateItem, { isLoading: isUpdating }] = useUpdateTenderMutation()
+  const [deleteItem] = useDeleteTenderMutation()
+
+  const tenders = data?.data || []
   const [formData, setFormData] = useState({
     dated: '',
     refNo: '',
@@ -43,7 +56,7 @@ export default function TendersAdmin() {
   const [pdfPreview, setPdfPreview] = useState<string | null>(null)
   const [corrigendumPdfPreview, setCorrigendumPdfPreview] = useState<string | null>(null)
   const [extensionPdfPreview, setExtensionPdfPreview] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  const isSubmitting = isCreating || isUpdating
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -112,7 +125,6 @@ export default function TendersAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
 
     try {
       let pdfBase64 = null
@@ -155,8 +167,7 @@ export default function TendersAdmin() {
         ? `${formData.openingDate}${formData.openingTime ? ' at ' + formData.openingTime : ''}`
         : formData.openingDate
 
-      const newTender: Tender = {
-        id: Date.now().toString(),
+      const tenderData = {
         dated: formData.dated,
         refNo: formData.refNo,
         details: formData.details,
@@ -172,77 +183,88 @@ export default function TendersAdmin() {
         extensionPdf: extensionPdfBase64,
       }
 
-      setTenders(prev => [...prev, newTender])
-      
-      // TODO: Add API call to submit the form data
-      // await fetch('/api/tenders', { method: 'POST', body: JSON.stringify(newTender) })
-      
-      // Reset form and close modal
-      setFormData({
-        dated: '',
-        refNo: '',
-        details: '',
-        dateOfIssue: '',
-        startDate: '',
-        startTime: '',
-        lastDate: '',
-        lastTime: '',
-        openingDate: '',
-        openingTime: '',
-        downloadLink: '',
-        corrigendumLink: '',
-        extensionNotice: '',
-        pdf: null,
-        corrigendumPdf: null,
-        extensionPdf: null,
-      })
-      setPdfPreview(null)
-      setCorrigendumPdfPreview(null)
-      setExtensionPdfPreview(null)
+      if (editingItem?._id) {
+        await updateItem({ id: editingItem._id, ...tenderData }).unwrap()
+      } else {
+        await createItem(tenderData).unwrap()
+      }
+
+      refetch()
+      resetForm()
       setIsModalOpen(false)
-      
-      // Show success message
-      alert('Tender added successfully!')
-    } catch (error) {
-      console.error('Error adding tender:', error)
-      alert('Failed to add tender. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+      alert(editingItem ? 'Tender updated successfully!' : 'Tender added successfully!')
+    } catch (error: any) {
+      console.error('Error saving tender:', error)
+      alert(error?.data?.message || 'Failed to save tender. Please try again.')
     }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      dated: '',
+      refNo: '',
+      details: '',
+      dateOfIssue: '',
+      startDate: '',
+      startTime: '',
+      lastDate: '',
+      lastTime: '',
+      openingDate: '',
+      openingTime: '',
+      downloadLink: '',
+      corrigendumLink: '',
+      extensionNotice: '',
+      pdf: null,
+      corrigendumPdf: null,
+      extensionPdf: null,
+    })
+    setPdfPreview(null)
+    setCorrigendumPdfPreview(null)
+    setExtensionPdfPreview(null)
+    setEditingItem(null)
   }
 
   const handleCloseModal = () => {
-    if (!isSubmitting) {
-      setIsModalOpen(false)
-      setFormData({
-        dated: '',
-        refNo: '',
-        details: '',
-        dateOfIssue: '',
-        startDate: '',
-        startTime: '',
-        lastDate: '',
-        lastTime: '',
-        openingDate: '',
-        openingTime: '',
-        downloadLink: '',
-        corrigendumLink: '',
-        extensionNotice: '',
-        pdf: null,
-        corrigendumPdf: null,
-        extensionPdf: null,
-      })
-      setPdfPreview(null)
-      setCorrigendumPdfPreview(null)
-      setExtensionPdfPreview(null)
-    }
+    setIsModalOpen(false)
+    resetForm()
   }
 
-  const handleDelete = (id: string) => {
+  const handleEdit = (tender: Tender) => {
+    setEditingItem(tender)
+    // Parse dates back from formatted strings if needed
+    setFormData({
+      dated: tender.dated || '',
+      refNo: tender.refNo || '',
+      details: tender.details || '',
+      dateOfIssue: tender.dateOfIssue || '',
+      startDate: tender.startDate?.split(' ')[0] || '',
+      startTime: tender.startDate?.split(' ')[1] || '',
+      lastDate: tender.lastDate?.split(' up to ')[0] || '',
+      lastTime: tender.lastDate?.includes(' up to ') ? tender.lastDate.split(' up to ')[1] : '',
+      openingDate: tender.openingDate?.split(' at ')[0] || '',
+      openingTime: tender.openingDate?.includes(' at ') ? tender.openingDate.split(' at ')[1] : '',
+      downloadLink: tender.downloadLink || '',
+      corrigendumLink: tender.corrigendumLink || '',
+      extensionNotice: tender.extensionNotice || '',
+      pdf: null,
+      corrigendumPdf: null,
+      extensionPdf: null,
+    })
+    setPdfPreview(tender.pdf)
+    setCorrigendumPdfPreview(tender.corrigendumPdf)
+    setExtensionPdfPreview(tender.extensionPdf)
+    setIsModalOpen(true)
+  }
+
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this tender?')) {
-      setTenders(prev => prev.filter(tender => tender.id !== id))
-      // TODO: Add API call to delete
-      // await fetch(`/api/tenders/${id}`, { method: 'DELETE' })
+      try {
+        await deleteItem(id).unwrap()
+        refetch()
+        alert('Tender deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
     }
   }
 
@@ -275,7 +297,17 @@ export default function TendersAdmin() {
           </button>
         </div>
 
-        {tenders.length === 0 ? (
+        {error ? (
+          <div className="py-16 text-center text-red-500">
+            <i className="fas fa-exclamation-circle text-4xl mb-4"></i>
+            <p>Error loading data. Please try again.</p>
+          </div>
+        ) : isLoading ? (
+          <div className="py-16 text-center text-gray-500">
+            <i className="fas fa-spinner fa-spin text-4xl mb-4"></i>
+            <p>Loading...</p>
+          </div>
+        ) : tenders.length === 0 ? (
           <div className="py-16 text-center text-gray-500">
             <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5">
               <i className="text-4xl fas fa-file-contract text-primary"></i>
@@ -286,7 +318,7 @@ export default function TendersAdmin() {
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {tenders.map((tender) => (
-              <div key={tender.id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
+              <div key={tender._id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
                 <div className="flex items-center gap-3 mb-3">
                   <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
                     <i className="fas fa-file-contract text-primary"></i>
@@ -294,13 +326,22 @@ export default function TendersAdmin() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-1">
                       <p className="text-xs text-gray-600 font-medium">Dated: {tender.dated}</p>
-                      <button
-                        onClick={() => handleDelete(tender.id)}
-                        className="ml-2 text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
-                        title="Delete tender"
-                      >
-                        <i className="fas fa-trash text-xs"></i>
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(tender)}
+                          className="text-blue-500 hover:text-blue-700 transition-colors flex-shrink-0"
+                          title="Edit tender"
+                        >
+                          <i className="fas fa-edit text-xs"></i>
+                        </button>
+                        <button
+                          onClick={() => tender._id && handleDelete(tender._id)}
+                          className="text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
+                          title="Delete tender"
+                        >
+                          <i className="fas fa-trash text-xs"></i>
+                        </button>
+                      </div>
                     </div>
                     <p className="text-sm font-bold text-primary truncate">{tender.refNo}</p>
                   </div>
@@ -313,7 +354,7 @@ export default function TendersAdmin() {
                   </div>
                   <div className="flex items-center gap-2 text-xs text-gray-600">
                     <i className="fas fa-clock text-primary text-xs"></i>
-                    <span className="truncate">Last: {tender.lastDate.split(' up to')[0]}</span>
+                    <span className="truncate">Last: {tender.lastDate?.split(' up to')[0] || tender.lastDate}</span>
                   </div>
                 </div>
                 <div className="flex flex-wrap gap-2">
@@ -373,7 +414,9 @@ export default function TendersAdmin() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-3xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 rounded-t-2xl">
-              <h2 className="text-2xl font-bold text-gray-900">Add Tender</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingItem ? 'Edit Tender' : 'Add Tender'}
+              </h2>
               <button
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
@@ -718,12 +761,12 @@ export default function TendersAdmin() {
                   {isSubmitting ? (
                     <>
                       <i className="mr-2 fas fa-spinner fa-spin"></i>
-                      Submitting...
+                      {editingItem ? 'Updating...' : 'Submitting...'}
                     </>
                   ) : (
                     <>
                       <i className="mr-2 fas fa-check"></i>
-                      Submit
+                      {editingItem ? 'Update' : 'Submit'}
                     </>
                   )}
                 </button>

@@ -1,21 +1,27 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  useGetNewsQuery,
+  useCreateNewsMutation,
+  useUpdateNewsMutation,
+  useDeleteNewsMutation,
+} from '@/lib/store/api'
 
 interface NewsArticle {
-  id: string
+  _id?: string
   title: string
   date: string
-  description: string | null
-  source: string | null
-  author: string | null
-  link: string | null
-  image: string | null
+  description?: string | null
+  source?: string | null
+  author?: string | null
+  link?: string | null
+  image?: string | null
 }
 
 export default function NewsAdmin() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [newsArticles, setNewsArticles] = useState<NewsArticle[]>([])
+  const [editingItem, setEditingItem] = useState<NewsArticle | null>(null)
   const [formData, setFormData] = useState({
     title: '',
     date: '',
@@ -26,7 +32,14 @@ export default function NewsAdmin() {
     image: null as File | null,
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const { data, isLoading, error, refetch } = useGetNewsQuery()
+  const [createNews, { isLoading: isCreating }] = useCreateNewsMutation()
+  const [updateNews, { isLoading: isUpdating }] = useUpdateNewsMutation()
+  const [deleteNews] = useDeleteNewsMutation()
+
+  const newsArticles = data?.data || []
+  const isSubmitting = isCreating || isUpdating
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -57,7 +70,6 @@ export default function NewsAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
 
     try {
       let imageBase64 = null
@@ -67,10 +79,11 @@ export default function NewsAdmin() {
           reader.onloadend = () => resolve(reader.result as string)
           reader.readAsDataURL(formData.image!)
         })
+      } else if (editingItem?.image) {
+        imageBase64 = editingItem.image
       }
 
-      const newArticle: NewsArticle = {
-        id: Date.now().toString(),
+      const newsData = {
         title: formData.title,
         date: formData.date,
         description: formData.description || null,
@@ -80,55 +93,65 @@ export default function NewsAdmin() {
         image: imageBase64,
       }
 
-      setNewsArticles(prev => [...prev, newArticle])
+      if (editingItem?._id) {
+        await updateNews({ id: editingItem._id, ...newsData }).unwrap()
+      } else {
+        await createNews(newsData).unwrap()
+      }
       
-      // TODO: Add API call to submit the form data
-      // await fetch('/api/news', { method: 'POST', body: JSON.stringify(newArticle) })
-      
-      // Reset form and close modal
-      setFormData({
-        title: '',
-        date: '',
-        description: '',
-        source: '',
-        author: '',
-        link: '',
-        image: null,
-      })
-      setImagePreview(null)
+      refetch()
+      resetForm()
       setIsModalOpen(false)
-      
-      // Show success message
-      alert('News article added successfully!')
-    } catch (error) {
-      console.error('Error adding news article:', error)
-      alert('Failed to add news article. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+      alert(editingItem ? 'News article updated successfully!' : 'News article added successfully!')
+    } catch (error: any) {
+      console.error('Error saving news article:', error)
+      alert(error?.data?.message || 'Failed to save news article. Please try again.')
     }
+  }
+
+  const resetForm = () => {
+    setFormData({
+      title: '',
+      date: '',
+      description: '',
+      source: '',
+      author: '',
+      link: '',
+      image: null,
+    })
+    setImagePreview(null)
+    setEditingItem(null)
   }
 
   const handleCloseModal = () => {
-    if (!isSubmitting) {
-      setIsModalOpen(false)
-      setFormData({
-        title: '',
-        date: '',
-        description: '',
-        source: '',
-        author: '',
-        link: '',
-        image: null,
-      })
-      setImagePreview(null)
-    }
+    setIsModalOpen(false)
+    resetForm()
   }
 
-  const handleDelete = (id: string) => {
+  const handleEdit = (article: NewsArticle) => {
+    setEditingItem(article)
+    setFormData({
+      title: article.title,
+      date: article.date,
+      description: article.description || '',
+      source: article.source || '',
+      author: article.author || '',
+      link: article.link || '',
+      image: null,
+    })
+    setImagePreview(article.image || null)
+    setIsModalOpen(true)
+  }
+
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this news article?')) {
-      setNewsArticles(prev => prev.filter(article => article.id !== id))
-      // TODO: Add API call to delete
-      // await fetch(`/api/news/${id}`, { method: 'DELETE' })
+      try {
+        await deleteNews(id).unwrap()
+        refetch()
+        alert('News article deleted successfully!')
+      } catch (error: any) {
+        alert(error?.data?.message || 'Failed to delete')
+      }
     }
   }
 
@@ -161,7 +184,17 @@ export default function NewsAdmin() {
           </button>
         </div>
 
-        {newsArticles.length === 0 ? (
+        {error ? (
+          <div className="py-16 text-center text-red-500">
+            <i className="fas fa-exclamation-circle text-4xl mb-4"></i>
+            <p>Error loading data. Please try again.</p>
+          </div>
+        ) : isLoading ? (
+          <div className="py-16 text-center text-gray-500">
+            <i className="fas fa-spinner fa-spin text-4xl mb-4"></i>
+            <p>Loading...</p>
+          </div>
+        ) : newsArticles.length === 0 ? (
           <div className="py-16 text-center text-gray-500">
             <div className="flex items-center justify-center w-20 h-20 mx-auto mb-4 rounded-2xl bg-gradient-to-br from-primary/10 to-primary/5">
               <i className="text-4xl fas fa-newspaper text-primary"></i>
@@ -172,7 +205,7 @@ export default function NewsAdmin() {
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {newsArticles.map((article) => (
-              <div key={article.id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
+              <div key={article._id} className="p-5 transition-all duration-300 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 bg-white/50 backdrop-blur-sm">
                 {article.image && (
                   <div className="w-full h-48 mb-4 overflow-hidden bg-gray-200 rounded-lg">
                     <img
@@ -191,13 +224,22 @@ export default function NewsAdmin() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-start justify-between mb-2">
                       <h3 className="text-lg font-bold text-primary flex-1 line-clamp-2">{article.title}</h3>
-                      <button
-                        onClick={() => handleDelete(article.id)}
-                        className="ml-2 text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
-                        title="Delete article"
-                      >
-                        <i className="fas fa-trash"></i>
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          onClick={() => handleEdit(article)}
+                          className="text-blue-500 hover:text-blue-700 transition-colors flex-shrink-0"
+                          title="Edit article"
+                        >
+                          <i className="fas fa-edit"></i>
+                        </button>
+                        <button
+                          onClick={() => article._id && handleDelete(article._id)}
+                          className="text-red-500 hover:text-red-700 transition-colors flex-shrink-0"
+                          title="Delete article"
+                        >
+                          <i className="fas fa-trash"></i>
+                        </button>
+                      </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 text-xs text-gray-600 mb-3">
                       {article.source && (
@@ -248,7 +290,9 @@ export default function NewsAdmin() {
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
             <div className="sticky top-0 flex items-center justify-between px-6 py-4 bg-white border-b border-gray-200 rounded-t-2xl">
-              <h2 className="text-2xl font-bold text-gray-900">Add News</h2>
+              <h2 className="text-2xl font-bold text-gray-900">
+                {editingItem ? 'Edit News' : 'Add News'}
+              </h2>
               <button
                 onClick={handleCloseModal}
                 disabled={isSubmitting}
