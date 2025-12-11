@@ -1,0 +1,436 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --primary-color: #0d569e;
+  --primary-dark: #0a4480;
+  --primary-light: #1a6bb8;
+  --secondary-color: #0a4480;
+  --accent-color: #0d569e;
+  --text-dark: #2c3e50;
+  --text-light: #6c757d;
+  --border-color: #e9ecef;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* Ensure lists maintain their markers */
+ul, ol {
+  list-style-position: outside;
+}
+
+ul {
+  list-style-type: disc;
+}
+
+ol {
+  list-style-type: decimal;
+}
+
+body {
+  font-family: 'Source Sans Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  color: var(--text-dark);
+  line-height: 1.7;
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+  font-weight: 700;
+  line-height: 1.3;
+  letter-spacing: -0.02em;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1 {
+  font-weight: 800;
+  letter-spacing: -0.03em;
+}
+
+h2 {
+  font-weight: 700;
+  letter-spacing: -0.025em;
+}
+
+h3 {
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+
+h4, h5, h6 {
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--secondary-color);
+}
+
+/* TipTap Editor Styles */
+.ProseMirror {
+  outline: none;
+  min-height: 300px;
+  padding: 1rem;
+}
+
+.ProseMirror p {
+  margin: 0.5rem 0;
+}
+
+.ProseMirror p:first-child {
+  margin-top: 0;
+}
+
+.ProseMirror p:last-child {
+  margin-bottom: 0;
+}
+
+.ProseMirror h1,
+.ProseMirror h2,
+.ProseMirror h3,
+.ProseMirror h4,
+.ProseMirror h5,
+.ProseMirror h6 {
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  font-weight: 600;
+}
+
+.ProseMirror ul,
+.ProseMirror ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.ProseMirror ul {
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.ProseMirror ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+.ProseMirror li {
+  margin: 0.25rem 0;
+  display: list-item;
+  padding-left: 0.5rem;
+}
+
+/* Ensure bullet points are visible in rendered content */
+.prose ul,
+.prose ol {
+  padding-left: 1.5rem;
+  margin: 0.5rem 0;
+}
+
+.prose ul {
+  list-style-type: disc;
+  list-style-position: outside;
+}
+
+.prose ol {
+  list-style-type: decimal;
+  list-style-position: outside;
+}
+
+.prose li {
+  margin: 0.25rem 0;
+  display: list-item;
+  padding-left: 0.5rem;
+}
+
+/* Override any prose styles that might hide list markers */
+.prose ul[class*="list-"] {
+  list-style-type: disc !important;
+}
+
+.prose ol[class*="list-"] {
+  list-style-type: decimal !important;
+}
+
+.ProseMirror a {
+  color: var(--primary-color);
+  text-decoration: underline;
+}
+
+.ProseMirror a:hover {
+  color: var(--primary-dark);
+}
+
+.ProseMirror strong {
+  font-weight: 700;
+}
+
+.ProseMirror em {
+  font-style: italic;
+}
+
+.ProseMirror u {
+  text-decoration: underline;
+}
+
+.ProseMirror s {
+  text-decoration: line-through;
+}
+
+/* Horizontal scrollbar styles */
+.scrollbar-thin {
+  scrollbar-width: thin;
+  scrollbar-color: var(--primary-color) #f1f1f1;
+}
+
+.scrollbar-thin::-webkit-scrollbar {
+  height: 6px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb {
+  background: var(--primary-color);
+  border-radius: 10px;
+}
+
+.scrollbar-thin::-webkit-scrollbar-thumb:hover {
+  background: var(--primary-dark);
+}
+
+/* Smooth scroll */
+html {
+  scroll-behavior: smooth;
+}
+
+/* Loading animation */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
+}
+
+.animate-fade-in {
+  animation: fadeIn 1s ease-out;
+}
+
+/* Glassmorphism Effect - Increased White Background */
+.glass {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+  box-shadow: 0 8px 32px 0 rgba(13, 86, 158, 0.15);
+}
+
+.glass-strong {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+  border: 2px solid rgba(255, 255, 255, 0.6);
+  box-shadow: 0 12px 40px 0 rgba(13, 86, 158, 0.2);
+}
+
+.glass-light {
+  background: rgba(255, 255, 255, 0.75);
+  backdrop-filter: blur(15px);
+  -webkit-backdrop-filter: blur(15px);
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 6px 24px 0 rgba(13, 86, 158, 0.12);
+}
+
+/* SVG Blue Filter */
+.svg-blue {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(2000%) hue-rotate(195deg) brightness(0.9) contrast(1.1);
+}
+
+.svg-blue img {
+  filter: brightness(0) saturate(100%) invert(27%) sepia(89%) saturate(2000%) hue-rotate(195deg) brightness(0.9) contrast(1.1);
+}
+
+/* Professional Typography Enhancements */
+@layer base {
+  /* Improved text rendering */
+  * {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Professional heading styles */
+  .heading-xl {
+    font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 800;
+    font-size: 3rem;
+    line-height: 1.2;
+    letter-spacing: -0.035em;
+  }
+
+  .heading-lg {
+    font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 700;
+    font-size: 2.25rem;
+    line-height: 1.3;
+    letter-spacing: -0.03em;
+  }
+
+  .heading-md {
+    font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 700;
+    font-size: 1.875rem;
+    line-height: 1.4;
+    letter-spacing: -0.025em;
+  }
+
+  .heading-sm {
+    font-family: 'Montserrat', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 600;
+    font-size: 1.5rem;
+    line-height: 1.5;
+    letter-spacing: -0.02em;
+  }
+
+  /* Professional body text */
+  .text-body {
+    font-family: 'Source Sans Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 1rem;
+    line-height: 1.7;
+    letter-spacing: 0;
+    font-weight: 400;
+  }
+
+  .text-body-lg {
+    font-family: 'Source Sans Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-size: 1.125rem;
+    line-height: 1.7;
+    letter-spacing: -0.01em;
+    font-weight: 400;
+  }
+
+  /* Professional navigation text */
+  .nav-text {
+    font-family: 'Source Sans Pro', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', sans-serif;
+    font-weight: 600;
+    font-size: 0.9375rem;
+    letter-spacing: 0.01em;
+  }
+
+  /* Professional link styles */
+  a {
+    transition: all 0.2s ease-in-out;
+  }
+
+  /* Improved paragraph spacing */
+  p {
+    margin-bottom: 1.25rem;
+  }
+
+  p:last-child {
+    margin-bottom: 0;
+  }
+}
+
+/* Announcements Page Styles */
+.bg-pattern {
+  background-image: radial-gradient(circle, rgba(255, 255, 255, 0.1) 1px, transparent 1px);
+  background-size: 20px 20px;
+}
+
+/* Announcement Ticker Animations */
+@keyframes scroll-rtl {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-33.333%);
+  }
+}
+
+@keyframes shimmer {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-scroll-rtl {
+  animation: scroll-rtl 30s linear infinite;
+}
+
+.animate-shimmer {
+  animation: shimmer 3s ease-in-out infinite;
+}
+
+/* Feather glow animation */
+@keyframes feather-glow {
+  0%, 100% {
+    opacity: 1;
+    filter: drop-shadow(0 0 3px rgba(255,255,255,1)) drop-shadow(0 0 8px rgba(135,206,250,0.8));
+  }
+  50% {
+    opacity: 0.9;
+    filter: drop-shadow(0 0 5px rgba(255,255,255,1)) drop-shadow(0 0 12px rgba(135,206,250,1));
+  }
+}
+
+.animate-feather-glow {
+  animation: feather-glow 2s ease-in-out infinite;
+}
+
+/* Pulse glow for trail effect */
+@keyframes pulse-glow {
+  0%, 100% {
+    opacity: 0.4;
+    transform: scale(1.2);
+  }
+  50% {
+    opacity: 0.7;
+    transform: scale(1.5);
+  }
+}
