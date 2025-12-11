@@ -1,26 +1,22 @@
-const Newsletter = require('../models/Newsletter');
+const ProcurementPolicy = require('../models/ProcurementPolicy');
 
 exports.getAll = async (req, res) => {
   try {
-    const { status, limit = 100, search } = req.query;
+    const { status, limit = 100 } = req.query;
     let query = {};
 
     if (status && status !== 'all') {
       query.status = status;
     }
 
-    if (search) {
-      query.title = { $regex: search, $options: 'i' };
-    }
-
-    const newsletters = await Newsletter.find(query)
+    const documents = await ProcurementPolicy.find(query)
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
 
     res.status(200).json({
       success: true,
-      count: newsletters.length,
-      data: newsletters
+      count: documents.length,
+      data: documents
     });
   } catch (error) {
     res.status(500).json({
@@ -32,18 +28,18 @@ exports.getAll = async (req, res) => {
 
 exports.getOne = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findById(req.params.id);
+    const document = await ProcurementPolicy.findById(req.params.id);
 
-    if (!newsletter) {
+    if (!document) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Document not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter
+      data: document
     });
   } catch (error) {
     res.status(500).json({
@@ -55,12 +51,12 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const newsletter = await Newsletter.create(req.body);
+    const document = await ProcurementPolicy.create(req.body);
 
     res.status(201).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter created successfully'
+      data: document,
+      message: 'Document created successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -72,23 +68,23 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndUpdate(
+    const document = await ProcurementPolicy.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
 
-    if (!newsletter) {
+    if (!document) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Document not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter updated successfully'
+      data: document,
+      message: 'Document updated successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -100,18 +96,18 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndDelete(req.params.id);
+    const document = await ProcurementPolicy.findByIdAndDelete(req.params.id);
 
-    if (!newsletter) {
+    if (!document) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Document not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Newsletter deleted successfully'
+      message: 'Document deleted successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -120,3 +116,4 @@ exports.delete = async (req, res) => {
     });
   }
 };
+

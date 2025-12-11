@@ -7,15 +7,16 @@ const {
   create,
   update,
   delete: deleteItem
-} = require('../controllers/newsletterController');
+} = require('../controllers/visitController');
 
-// Public routes
-router.get('/', getAll);
-router.get('/:id', getOne);
+// Public route for creating visit requests
+router.post('/', create);
 
 // Protected routes (Admin only)
-router.post('/', protect, authorize('admin'), create);
+router.get('/', protect, authorize('admin'), getAll);
+router.get('/:id', protect, authorize('admin'), getOne);
 router.put('/:id', protect, authorize('admin'), update);
 router.delete('/:id', protect, authorize('admin'), deleteItem);
 
 module.exports = router;
+

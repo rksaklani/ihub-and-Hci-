@@ -1,4 +1,4 @@
-const Newsletter = require('../models/Newsletter');
+const Workshop = require('../models/Workshop');
 
 exports.getAll = async (req, res) => {
   try {
@@ -10,17 +10,20 @@ exports.getAll = async (req, res) => {
     }
 
     if (search) {
-      query.title = { $regex: search, $options: 'i' };
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    const newsletters = await Newsletter.find(query)
-      .sort({ createdAt: -1 })
+    const workshops = await Workshop.find(query)
+      .sort({ date: -1 })
       .limit(parseInt(limit));
 
     res.status(200).json({
       success: true,
-      count: newsletters.length,
-      data: newsletters
+      count: workshops.length,
+      data: workshops
     });
   } catch (error) {
     res.status(500).json({
@@ -32,18 +35,18 @@ exports.getAll = async (req, res) => {
 
 exports.getOne = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findById(req.params.id);
+    const workshop = await Workshop.findById(req.params.id);
 
-    if (!newsletter) {
+    if (!workshop) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Workshop not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter
+      data: workshop
     });
   } catch (error) {
     res.status(500).json({
@@ -55,12 +58,12 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const newsletter = await Newsletter.create(req.body);
+    const workshop = await Workshop.create(req.body);
 
     res.status(201).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter created successfully'
+      data: workshop,
+      message: 'Workshop created successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -72,23 +75,23 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndUpdate(
+    const workshop = await Workshop.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
 
-    if (!newsletter) {
+    if (!workshop) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Workshop not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter updated successfully'
+      data: workshop,
+      message: 'Workshop updated successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -100,18 +103,18 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndDelete(req.params.id);
+    const workshop = await Workshop.findByIdAndDelete(req.params.id);
 
-    if (!newsletter) {
+    if (!workshop) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Workshop not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Newsletter deleted successfully'
+      message: 'Workshop deleted successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -120,3 +123,4 @@ exports.delete = async (req, res) => {
     });
   }
 };
+

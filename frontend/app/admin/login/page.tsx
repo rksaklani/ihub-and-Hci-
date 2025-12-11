@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import axios from '@/lib/axios'
 
 export default function AdminLogin() {
   const router = useRouter()
@@ -13,7 +14,8 @@ export default function AdminLogin() {
   const [showPassword, setShowPassword] = useState(false)
 
   useEffect(() => {
-    const token = localStorage.getItem('adminToken')
+    // Check for both token names for backward compatibility
+    const token = localStorage.getItem('token') || localStorage.getItem('adminToken')
     if (token) {
       router.push('/admin/dashboard')
     }
@@ -25,40 +27,29 @@ export default function AdminLogin() {
     setLoading(true)
 
     try {
-      const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000/api'
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ email, password }),
+      const response = await axios.post('/auth/login', {
+        email,
+        password,
       })
 
-      const data = await response.json()
+      const data = response.data
 
-      if (response.ok && data.success) {
+      if (data.success && data.token) {
+        // Store token as 'token' to match axios interceptor
+        localStorage.setItem('token', data.token)
+        localStorage.setItem('user', JSON.stringify(data.user))
+        // Also store as adminToken for backward compatibility
         localStorage.setItem('adminToken', data.token)
         localStorage.setItem('adminUser', JSON.stringify(data.user))
+        
         router.push('/admin/dashboard')
       } else {
-        // Development fallback
-        if (email && password) {
-          localStorage.setItem('adminToken', 'mock-token-' + Date.now())
-          localStorage.setItem('adminUser', JSON.stringify({ _id: '1', username: 'admin', email: email, role: 'admin' }))
-          router.push('/admin/dashboard')
-        } else {
-          setError(data.message || 'Login failed. Please try again.')
-        }
+        setError(data.message || 'Login failed. Please try again.')
       }
     } catch (err: any) {
-      // Development fallback
-      if (email && password) {
-        localStorage.setItem('adminToken', 'mock-token-' + Date.now())
-        localStorage.setItem('adminUser', JSON.stringify({ _id: '1', username: 'admin', email: email, role: 'admin' }))
-        router.push('/admin/dashboard')
-      } else {
-        setError('Login failed. Please try again.')
-      }
+      const errorMessage = err.response?.data?.message || err.message || 'Login failed. Please try again.'
+      setError(errorMessage)
+      console.error('Login error:', err)
     } finally {
       setLoading(false)
     }

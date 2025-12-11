@@ -7,7 +7,7 @@ const {
   create,
   update,
   delete: deleteItem
-} = require('../controllers/newsletterController');
+} = require('../controllers/auditReportController');
 
 // Public routes
 router.get('/', getAll);
@@ -19,3 +19,4 @@ router.put('/:id', protect, authorize('admin'), update);
 router.delete('/:id', protect, authorize('admin'), deleteItem);
 
 module.exports = router;
+

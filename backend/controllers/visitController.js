@@ -1,4 +1,4 @@
-const Newsletter = require('../models/Newsletter');
+const Visit = require('../models/Visit');
 
 exports.getAll = async (req, res) => {
   try {
@@ -10,17 +10,21 @@ exports.getAll = async (req, res) => {
     }
 
     if (search) {
-      query.title = { $regex: search, $options: 'i' };
+      query.$or = [
+        { name: { $regex: search, $options: 'i' } },
+        { email: { $regex: search, $options: 'i' } },
+        { organization: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    const newsletters = await Newsletter.find(query)
-      .sort({ createdAt: -1 })
+    const visits = await Visit.find(query)
+      .sort({ preferredDate: -1 })
       .limit(parseInt(limit));
 
     res.status(200).json({
       success: true,
-      count: newsletters.length,
-      data: newsletters
+      count: visits.length,
+      data: visits
     });
   } catch (error) {
     res.status(500).json({
@@ -32,18 +36,18 @@ exports.getAll = async (req, res) => {
 
 exports.getOne = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findById(req.params.id);
+    const visit = await Visit.findById(req.params.id);
 
-    if (!newsletter) {
+    if (!visit) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Visit not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter
+      data: visit
     });
   } catch (error) {
     res.status(500).json({
@@ -55,12 +59,12 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const newsletter = await Newsletter.create(req.body);
+    const visit = await Visit.create(req.body);
 
     res.status(201).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter created successfully'
+      data: visit,
+      message: 'Visit request created successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -72,23 +76,23 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndUpdate(
+    const visit = await Visit.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
 
-    if (!newsletter) {
+    if (!visit) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Visit not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter updated successfully'
+      data: visit,
+      message: 'Visit updated successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -100,18 +104,18 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndDelete(req.params.id);
+    const visit = await Visit.findByIdAndDelete(req.params.id);
 
-    if (!newsletter) {
+    if (!visit) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Visit not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Newsletter deleted successfully'
+      message: 'Visit deleted successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -120,3 +124,4 @@ exports.delete = async (req, res) => {
     });
   }
 };
+

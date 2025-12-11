@@ -1,4 +1,4 @@
-const Newsletter = require('../models/Newsletter');
+const Tender = require('../models/Tender');
 
 exports.getAll = async (req, res) => {
   try {
@@ -10,17 +10,20 @@ exports.getAll = async (req, res) => {
     }
 
     if (search) {
-      query.title = { $regex: search, $options: 'i' };
+      query.$or = [
+        { refNo: { $regex: search, $options: 'i' } },
+        { details: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    const newsletters = await Newsletter.find(query)
-      .sort({ createdAt: -1 })
+    const tenders = await Tender.find(query)
+      .sort({ dated: -1 })
       .limit(parseInt(limit));
 
     res.status(200).json({
       success: true,
-      count: newsletters.length,
-      data: newsletters
+      count: tenders.length,
+      data: tenders
     });
   } catch (error) {
     res.status(500).json({
@@ -32,18 +35,18 @@ exports.getAll = async (req, res) => {
 
 exports.getOne = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findById(req.params.id);
+    const tender = await Tender.findById(req.params.id);
 
-    if (!newsletter) {
+    if (!tender) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Tender not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter
+      data: tender
     });
   } catch (error) {
     res.status(500).json({
@@ -55,12 +58,12 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const newsletter = await Newsletter.create(req.body);
+    const tender = await Tender.create(req.body);
 
     res.status(201).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter created successfully'
+      data: tender,
+      message: 'Tender created successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -72,23 +75,23 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndUpdate(
+    const tender = await Tender.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
 
-    if (!newsletter) {
+    if (!tender) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Tender not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter updated successfully'
+      data: tender,
+      message: 'Tender updated successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -100,18 +103,18 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndDelete(req.params.id);
+    const tender = await Tender.findByIdAndDelete(req.params.id);
 
-    if (!newsletter) {
+    if (!tender) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Tender not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Newsletter deleted successfully'
+      message: 'Tender deleted successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -120,3 +123,4 @@ exports.delete = async (req, res) => {
     });
   }
 };
+

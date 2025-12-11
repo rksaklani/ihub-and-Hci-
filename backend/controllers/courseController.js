@@ -1,6 +1,6 @@
-const Newsletter = require('../models/Newsletter');
+const Course = require('../models/Course');
 
-exports.getAll = async (req, res) => {
+exports.getAllCourses = async (req, res) => {
   try {
     const { status, limit = 100, search } = req.query;
     let query = {};
@@ -10,17 +10,23 @@ exports.getAll = async (req, res) => {
     }
 
     if (search) {
-      query.title = { $regex: search, $options: 'i' };
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
     }
 
-    const newsletters = await Newsletter.find(query)
+    const courses = await Course.find(query)
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
 
+    const total = await Course.countDocuments(query);
+
     res.status(200).json({
       success: true,
-      count: newsletters.length,
-      data: newsletters
+      total,
+      count: courses.length,
+      data: courses
     });
   } catch (error) {
     res.status(500).json({
@@ -30,20 +36,20 @@ exports.getAll = async (req, res) => {
   }
 };
 
-exports.getOne = async (req, res) => {
+exports.getCourse = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findById(req.params.id);
+    const course = await Course.findById(req.params.id);
 
-    if (!newsletter) {
+    if (!course) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Course not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter
+      data: course
     });
   } catch (error) {
     res.status(500).json({
@@ -53,14 +59,14 @@ exports.getOne = async (req, res) => {
   }
 };
 
-exports.create = async (req, res) => {
+exports.createCourse = async (req, res) => {
   try {
-    const newsletter = await Newsletter.create(req.body);
+    const course = await Course.create(req.body);
 
     res.status(201).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter created successfully'
+      data: course,
+      message: 'Course created successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -70,25 +76,28 @@ exports.create = async (req, res) => {
   }
 };
 
-exports.update = async (req, res) => {
+exports.updateCourse = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndUpdate(
+    const course = await Course.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
+      {
+        new: true,
+        runValidators: true
+      }
     );
 
-    if (!newsletter) {
+    if (!course) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Course not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter updated successfully'
+      data: course,
+      message: 'Course updated successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -98,20 +107,20 @@ exports.update = async (req, res) => {
   }
 };
 
-exports.delete = async (req, res) => {
+exports.deleteCourse = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndDelete(req.params.id);
+    const course = await Course.findByIdAndDelete(req.params.id);
 
-    if (!newsletter) {
+    if (!course) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Course not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Newsletter deleted successfully'
+      message: 'Course deleted successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -120,3 +129,4 @@ exports.delete = async (req, res) => {
     });
   }
 };
+

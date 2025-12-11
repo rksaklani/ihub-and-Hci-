@@ -124,14 +124,14 @@ const app = express();
 
 // ----- FIXED CORS CONFIG -----
 app.use(cors({
-  origin: "http://localhost:3000",
+  origin:  process.env.FRONTEND_URL,
   credentials: true,
   methods: ["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
   allowedHeaders: ["Content-Type", "Authorization"]
 }));
 
 app.options("*", cors({
-  origin: "http://localhost:3000",
+  origin:  process.env.FRONTEND_URL,
   credentials: true
 }));
 // --------------------------------
@@ -151,6 +151,22 @@ const staffRoutes = require('./routes/staffRoutes');
 const newsletterRoutes = require('./routes/newsletterRoutes');
 const contactRoutes = require('./routes/contactRoutes');
 
+// New admin module routes
+const courseRoutes = require('./routes/courseRoutes');
+const callForInnovationRoutes = require('./routes/callForInnovationRoutes');
+const careerRoutes = require('./routes/careerRoutes');
+const incubationRoutes = require('./routes/incubationRoutes');
+const collaborationRoutes = require('./routes/collaborationRoutes');
+const projectRoutes = require('./routes/projectRoutes');
+const newsRoutes = require('./routes/newsRoutes');
+const workshopRoutes = require('./routes/workshopRoutes');
+const tenderRoutes = require('./routes/tenderRoutes');
+const visitRoutes = require('./routes/visitRoutes');
+const infrastructureRoutes = require('./routes/infrastructureRoutes');
+const procurementPolicyRoutes = require('./routes/procurementPolicyRoutes');
+const auditReportRoutes = require('./routes/auditReportRoutes');
+const skillDevelopmentRoutes = require('./routes/skillDevelopmentRoutes');
+
 // API Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/blog', blogRoutes);
@@ -161,6 +177,22 @@ app.use('/api/researchers', researcherRoutes);
 app.use('/api/staff', staffRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/contact', contactRoutes);
+
+// New admin module routes
+app.use('/api/courses', courseRoutes);
+app.use('/api/call-for-innovation', callForInnovationRoutes);
+app.use('/api/careers', careerRoutes);
+app.use('/api/incubation', incubationRoutes);
+app.use('/api/collaborations', collaborationRoutes);
+app.use('/api/projects', projectRoutes);
+app.use('/api/news', newsRoutes);
+app.use('/api/workshops', workshopRoutes);
+app.use('/api/tenders', tenderRoutes);
+app.use('/api/visits', visitRoutes);
+app.use('/api/infrastructure', infrastructureRoutes);
+app.use('/api/procurement-policy', procurementPolicyRoutes);
+app.use('/api/audit-reports', auditReportRoutes);
+app.use('/api/skill-development', skillDevelopmentRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next'
 import './globals.css'
 import ConditionalLayout from '@/components/layout/ConditionalLayout'
+import StoreProvider from '@/lib/store/StoreProvider'
 
 
 
@@ -61,9 +62,11 @@ export default function RootLayout({
         />
       </head>
       <body className="bg-gray-50">
-        <ConditionalLayout>
-            {children}
-        </ConditionalLayout>
+        <StoreProvider>
+          <ConditionalLayout>
+              {children}
+          </ConditionalLayout>
+        </StoreProvider>
       </body>
     </html>
   )

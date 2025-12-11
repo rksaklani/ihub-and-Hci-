@@ -1,26 +1,33 @@
-const Newsletter = require('../models/Newsletter');
+const Infrastructure = require('../models/Infrastructure');
 
 exports.getAll = async (req, res) => {
   try {
-    const { status, limit = 100, search } = req.query;
+    const { status, category, limit = 100, search } = req.query;
     let query = {};
 
     if (status && status !== 'all') {
       query.status = status;
     }
 
-    if (search) {
-      query.title = { $regex: search, $options: 'i' };
+    if (category) {
+      query.category = category;
     }
 
-    const newsletters = await Newsletter.find(query)
+    if (search) {
+      query.$or = [
+        { title: { $regex: search, $options: 'i' } },
+        { description: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    const items = await Infrastructure.find(query)
       .sort({ createdAt: -1 })
       .limit(parseInt(limit));
 
     res.status(200).json({
       success: true,
-      count: newsletters.length,
-      data: newsletters
+      count: items.length,
+      data: items
     });
   } catch (error) {
     res.status(500).json({
@@ -32,18 +39,18 @@ exports.getAll = async (req, res) => {
 
 exports.getOne = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findById(req.params.id);
+    const item = await Infrastructure.findById(req.params.id);
 
-    if (!newsletter) {
+    if (!item) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Infrastructure item not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter
+      data: item
     });
   } catch (error) {
     res.status(500).json({
@@ -55,12 +62,12 @@ exports.getOne = async (req, res) => {
 
 exports.create = async (req, res) => {
   try {
-    const newsletter = await Newsletter.create(req.body);
+    const item = await Infrastructure.create(req.body);
 
     res.status(201).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter created successfully'
+      data: item,
+      message: 'Infrastructure item created successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -72,23 +79,23 @@ exports.create = async (req, res) => {
 
 exports.update = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndUpdate(
+    const item = await Infrastructure.findByIdAndUpdate(
       req.params.id,
       req.body,
       { new: true, runValidators: true }
     );
 
-    if (!newsletter) {
+    if (!item) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Infrastructure item not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      data: newsletter,
-      message: 'Newsletter updated successfully'
+      data: item,
+      message: 'Infrastructure item updated successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -100,18 +107,18 @@ exports.update = async (req, res) => {
 
 exports.delete = async (req, res) => {
   try {
-    const newsletter = await Newsletter.findByIdAndDelete(req.params.id);
+    const item = await Infrastructure.findByIdAndDelete(req.params.id);
 
-    if (!newsletter) {
+    if (!item) {
       return res.status(404).json({
         success: false,
-        message: 'Newsletter not found'
+        message: 'Infrastructure item not found'
       });
     }
 
     res.status(200).json({
       success: true,
-      message: 'Newsletter deleted successfully'
+      message: 'Infrastructure item deleted successfully'
     });
   } catch (error) {
     res.status(500).json({
@@ -120,3 +127,4 @@ exports.delete = async (req, res) => {
     });
   }
 };
+
