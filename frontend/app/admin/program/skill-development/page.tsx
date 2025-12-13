@@ -1,41 +1,25 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
+import {
+  useGetSkillDevelopmentQuery,
+  useCreateSkillDevelopmentMutation,
+  useDeleteSkillDevelopmentMutation,
+} from '@/lib/store/api'
 
-// Interfaces for different item types
-interface PMKVYItem {
-  id: string
-  description1: string
-  description2: string
-  readMoreLink: string
-  pdf: string | null
-}
-
-interface HPKVNItem {
-  id: string
-  description: string
-  readMoreLink: string
-  pdf: string | null
-}
-
-interface JobRole {
-  id: string
-  title: string
-  applicationLink: string
-  pdf: string | null
-}
-
-interface WebinarWorkshop {
-  id: string
-  title: string
-  image: string
-  link: string
-}
-
-interface PastActivity {
-  id: string
-  image: string
+// Unified interface for all skill development items
+interface SkillDevelopmentItem {
+  _id: string
+  type: 'pmkvy' | 'hpkvn' | 'job-role' | 'webinar-workshop' | 'past-activity'
+  description1?: string
+  description2?: string
+  description?: string
   title?: string
+  readMoreLink?: string
+  applicationLink?: string
+  pdf?: string | null
+  image?: string | null
+  link?: string
 }
 
 export default function SkillDevelopmentAdmin() {
@@ -48,12 +32,18 @@ export default function SkillDevelopmentAdmin() {
   const [isWebinarModalOpen, setIsWebinarModalOpen] = useState(false)
   const [isActivityModalOpen, setIsActivityModalOpen] = useState(false)
 
-  // State for data
-  const [pmkvyItems, setPmkvyItems] = useState<PMKVYItem[]>([])
-  const [hpkvnItems, setHpkvnItems] = useState<HPKVNItem[]>([])
-  const [jobRoles, setJobRoles] = useState<JobRole[]>([])
-  const [webinars, setWebinars] = useState<WebinarWorkshop[]>([])
-  const [pastActivities, setPastActivities] = useState<PastActivity[]>([])
+  // RTK Query hooks
+  const { data: skillDevData, refetch: refetchSkillDev } = useGetSkillDevelopmentQuery({})
+  const [createSkillDev] = useCreateSkillDevelopmentMutation()
+  const [deleteSkillDev] = useDeleteSkillDevelopmentMutation()
+
+  // Filter items by type
+  const allItems = skillDevData?.data || []
+  const pmkvyItems = useMemo(() => allItems.filter((item: SkillDevelopmentItem) => item.type === 'pmkvy'), [allItems])
+  const hpkvnItems = useMemo(() => allItems.filter((item: SkillDevelopmentItem) => item.type === 'hpkvn'), [allItems])
+  const jobRoles = useMemo(() => allItems.filter((item: SkillDevelopmentItem) => item.type === 'job-role'), [allItems])
+  const webinars = useMemo(() => allItems.filter((item: SkillDevelopmentItem) => item.type === 'webinar-workshop'), [allItems])
+  const pastActivities = useMemo(() => allItems.filter((item: SkillDevelopmentItem) => item.type === 'past-activity'), [allItems])
 
   // Form states
   const [pmkvyFormData, setPmkvyFormData] = useState({
@@ -91,7 +81,20 @@ export default function SkillDevelopmentAdmin() {
   })
   const [activityImagePreview, setActivityImagePreview] = useState<string | null>(null)
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
+  // Helper function to handle delete
+  const handleDelete = async (id: string) => {
+    if (confirm('Are you sure you want to delete this item?')) {
+      try {
+        await deleteSkillDev(id).unwrap()
+        refetchSkillDev()
+        alert('Item deleted successfully!')
+      } catch (error: any) {
+        console.error('Error deleting item:', error)
+        const errorMessage = error?.data?.message || error?.message || 'Failed to delete item'
+        alert(errorMessage)
+      }
+    }
+  }
 
   const tabs = [
     { id: 'pmkvy', label: 'Training Partner for PMKVY' },
@@ -120,7 +123,15 @@ export default function SkillDevelopmentAdmin() {
 
   const handlePmkvySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    // Client-side validation
+    const trimmedDesc1 = pmkvyFormData.description1?.trim()
+    const trimmedDesc2 = pmkvyFormData.description2?.trim()
+    if (!trimmedDesc1 || !trimmedDesc2) {
+      alert('Please enter both description paragraphs')
+      return
+    }
+
     try {
       let pdfBase64 = null
       if (pmkvyFormData.pdf) {
@@ -130,22 +141,24 @@ export default function SkillDevelopmentAdmin() {
           reader.readAsDataURL(pmkvyFormData.pdf!)
         })
       }
-      const newItem: PMKVYItem = {
-        id: Date.now().toString(),
-        description1: pmkvyFormData.description1,
-        description2: pmkvyFormData.description2,
-        readMoreLink: pmkvyFormData.readMoreLink,
-        pdf: pdfBase64,
-      }
-      setPmkvyItems(prev => [...prev, newItem])
+      
+      await createSkillDev({
+        type: 'pmkvy',
+        description1: trimmedDesc1,
+        description2: trimmedDesc2,
+        readMoreLink: pmkvyFormData.readMoreLink?.trim() || undefined,
+        pdf: pdfBase64 || undefined,
+      }).unwrap()
+      
       setPmkvyFormData({ description1: '', description2: '', readMoreLink: '', pdf: null })
       setPmkvyPdfPreview(null)
       setIsPMKVYModalOpen(false)
+      refetchSkillDev()
       alert('PMKVY item added successfully!')
-    } catch (error) {
-      alert('Failed to add item. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+    } catch (error: any) {
+      console.error('Error adding PMKVY item:', error)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add item'
+      alert(errorMessage)
     }
   }
 
@@ -168,7 +181,14 @@ export default function SkillDevelopmentAdmin() {
 
   const handleHpkvnSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    // Client-side validation
+    const trimmedDesc = hpkvnFormData.description?.trim()
+    if (!trimmedDesc) {
+      alert('Please enter a description')
+      return
+    }
+
     try {
       let pdfBase64 = null
       if (hpkvnFormData.pdf) {
@@ -178,21 +198,23 @@ export default function SkillDevelopmentAdmin() {
           reader.readAsDataURL(hpkvnFormData.pdf!)
         })
       }
-      const newItem: HPKVNItem = {
-        id: Date.now().toString(),
-        description: hpkvnFormData.description,
-        readMoreLink: hpkvnFormData.readMoreLink,
-        pdf: pdfBase64,
-      }
-      setHpkvnItems(prev => [...prev, newItem])
+      
+      await createSkillDev({
+        type: 'hpkvn',
+        description: trimmedDesc,
+        readMoreLink: hpkvnFormData.readMoreLink?.trim() || undefined,
+        pdf: pdfBase64 || undefined,
+      }).unwrap()
+      
       setHpkvnFormData({ description: '', readMoreLink: '', pdf: null })
       setHpkvnPdfPreview(null)
       setIsHPKVNModalOpen(false)
+      refetchSkillDev()
       alert('HPKVN item added successfully!')
-    } catch (error) {
-      alert('Failed to add item. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+    } catch (error: any) {
+      console.error('Error adding HPKVN item:', error)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add item'
+      alert(errorMessage)
     }
   }
 
@@ -215,7 +237,15 @@ export default function SkillDevelopmentAdmin() {
 
   const handleJobRoleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    // Client-side validation
+    const trimmedTitle = jobRoleFormData.title?.trim()
+    const trimmedLink = jobRoleFormData.applicationLink?.trim()
+    if (!trimmedTitle || !trimmedLink) {
+      alert('Please enter both title and application link')
+      return
+    }
+
     try {
       let pdfBase64 = null
       if (jobRoleFormData.pdf) {
@@ -225,21 +255,23 @@ export default function SkillDevelopmentAdmin() {
           reader.readAsDataURL(jobRoleFormData.pdf!)
         })
       }
-      const newItem: JobRole = {
-        id: Date.now().toString(),
-        title: jobRoleFormData.title,
-        applicationLink: jobRoleFormData.applicationLink,
-        pdf: pdfBase64,
-      }
-      setJobRoles(prev => [...prev, newItem])
+      
+      await createSkillDev({
+        type: 'job-role',
+        title: trimmedTitle,
+        applicationLink: trimmedLink,
+        pdf: pdfBase64 || undefined,
+      }).unwrap()
+      
       setJobRoleFormData({ title: '', applicationLink: '', pdf: null })
       setJobRolePdfPreview(null)
       setIsJobRoleModalOpen(false)
+      refetchSkillDev()
       alert('Job role added successfully!')
-    } catch (error) {
-      alert('Failed to add job role. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+    } catch (error: any) {
+      console.error('Error adding job role:', error)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add job role'
+      alert(errorMessage)
     }
   }
 
@@ -262,7 +294,18 @@ export default function SkillDevelopmentAdmin() {
 
   const handleWebinarSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    // Client-side validation
+    const trimmedTitle = webinarFormData.title?.trim()
+    if (!trimmedTitle) {
+      alert('Please enter a title')
+      return
+    }
+    if (!webinarFormData.image) {
+      alert('Please upload an image')
+      return
+    }
+
     try {
       let imageBase64 = null
       if (webinarFormData.image) {
@@ -273,21 +316,22 @@ export default function SkillDevelopmentAdmin() {
         })
       }
 
-      const newItem: WebinarWorkshop = {
-        id: Date.now().toString(),
-        title: webinarFormData.title,
-        image: imageBase64 || '',
-        link: webinarFormData.link,
-      }
-      setWebinars(prev => [...prev, newItem])
+      await createSkillDev({
+        type: 'webinar-workshop',
+        title: trimmedTitle,
+        image: imageBase64 || undefined,
+        link: webinarFormData.link?.trim() || undefined,
+      }).unwrap()
+      
       setWebinarFormData({ title: '', image: null, link: '' })
       setWebinarImagePreview(null)
       setIsWebinarModalOpen(false)
+      refetchSkillDev()
       alert('Webinar/Workshop added successfully!')
-    } catch (error) {
-      alert('Failed to add webinar/workshop. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+    } catch (error: any) {
+      console.error('Error adding webinar/workshop:', error)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add webinar/workshop'
+      alert(errorMessage)
     }
   }
 
@@ -310,7 +354,13 @@ export default function SkillDevelopmentAdmin() {
 
   const handleActivitySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    // Client-side validation
+    if (!activityFormData.image) {
+      alert('Please upload an image')
+      return
+    }
+
     try {
       let imageBase64 = null
       if (activityFormData.image) {
@@ -321,20 +371,21 @@ export default function SkillDevelopmentAdmin() {
         })
       }
 
-      const newItem: PastActivity = {
-        id: Date.now().toString(),
-        image: imageBase64 || '',
-        title: activityFormData.title || undefined,
-      }
-      setPastActivities(prev => [...prev, newItem])
+      await createSkillDev({
+        type: 'past-activity',
+        image: imageBase64 || undefined,
+        title: activityFormData.title?.trim() || undefined,
+      }).unwrap()
+      
       setActivityFormData({ image: null, title: '' })
       setActivityImagePreview(null)
       setIsActivityModalOpen(false)
+      refetchSkillDev()
       alert('Past activity added successfully!')
-    } catch (error) {
-      alert('Failed to add activity. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+    } catch (error: any) {
+      console.error('Error adding past activity:', error)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add activity'
+      alert(errorMessage)
     }
   }
 
@@ -396,14 +447,25 @@ export default function SkillDevelopmentAdmin() {
             ) : (
               <div className="space-y-4">
                 {pmkvyItems.map((item) => (
-                  <div key={item.id} className="p-4 border border-gray-200 rounded-lg">
-                    <p className="mb-2 text-gray-700">{item.description1}</p>
-                    <p className="mb-2 text-gray-700">{item.description2}</p>
-                    {item.readMoreLink && (
-                      <a href={item.readMoreLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        Read More
-                      </a>
-                    )}
+                  <div key={item._id} className="p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <p className="mb-2 text-gray-700">{item.description1}</p>
+                        <p className="mb-2 text-gray-700">{item.description2}</p>
+                        {item.readMoreLink && (
+                          <a href={item.readMoreLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                            Read More
+                          </a>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDelete(item._id)}
+                        className="ml-4 text-red-500 hover:text-red-700 transition-colors"
+                        title="Delete item"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -432,13 +494,24 @@ export default function SkillDevelopmentAdmin() {
             ) : (
               <div className="space-y-4">
                 {hpkvnItems.map((item) => (
-                  <div key={item.id} className="p-4 border border-gray-200 rounded-lg">
-                    <p className="mb-2 text-gray-700">{item.description}</p>
-                    {item.readMoreLink && (
-                      <a href={item.readMoreLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        Read More
-                      </a>
-                    )}
+                  <div key={item._id} className="p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <p className="mb-2 text-gray-700">{item.description}</p>
+                        {item.readMoreLink && (
+                          <a href={item.readMoreLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                            Read More
+                          </a>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDelete(item._id)}
+                        className="ml-4 text-red-500 hover:text-red-700 transition-colors"
+                        title="Delete item"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -467,11 +540,22 @@ export default function SkillDevelopmentAdmin() {
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {jobRoles.map((role) => (
-                  <div key={role.id} className="p-4 border border-gray-200 rounded-lg">
-                    <h3 className="mb-2 font-semibold text-gray-900">{role.title}</h3>
-                    <a href={role.applicationLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                      Application Link
-                    </a>
+                  <div key={role._id} className="p-4 border border-gray-200 rounded-lg">
+                    <div className="flex items-start justify-between mb-2">
+                      <div className="flex-1">
+                        <h3 className="mb-2 font-semibold text-gray-900">{role.title}</h3>
+                        <a href={role.applicationLink} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                          Application Link
+                        </a>
+                      </div>
+                      <button
+                        onClick={() => handleDelete(role._id)}
+                        className="ml-4 text-red-500 hover:text-red-700 transition-colors"
+                        title="Delete job role"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -500,16 +584,27 @@ export default function SkillDevelopmentAdmin() {
             ) : (
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {webinars.map((webinar) => (
-                  <div key={webinar.id} className="p-4 border border-gray-200 rounded-lg">
+                  <div key={webinar._id} className="p-4 border border-gray-200 rounded-lg">
                     {webinar.image && (
                       <img src={webinar.image} alt={webinar.title} className="object-cover w-full h-48 mb-3 rounded-lg" />
                     )}
-                    <h3 className="mb-2 font-semibold text-gray-900">{webinar.title}</h3>
-                    {webinar.link && (
-                      <a href={webinar.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                        View Details
-                      </a>
-                    )}
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h3 className="mb-2 font-semibold text-gray-900">{webinar.title}</h3>
+                        {webinar.link && (
+                          <a href={webinar.link} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                            View Details
+                          </a>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => handleDelete(webinar._id)}
+                        className="ml-4 text-red-500 hover:text-red-700 transition-colors"
+                        title="Delete webinar/workshop"
+                      >
+                        <i className="fas fa-trash"></i>
+                      </button>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -538,13 +633,20 @@ export default function SkillDevelopmentAdmin() {
             ) : (
               <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
                 {pastActivities.map((activity) => (
-                  <div key={activity.id} className="p-2 border border-gray-200 rounded-lg">
+                  <div key={activity._id} className="p-2 border border-gray-200 rounded-lg relative">
                     {activity.image && (
                       <img src={activity.image} alt={activity.title || 'Past Activity'} className="object-cover w-full h-48 rounded-lg" />
                     )}
                     {activity.title && (
                       <p className="mt-2 text-sm text-center text-gray-700">{activity.title}</p>
                     )}
+                    <button
+                      onClick={() => handleDelete(activity._id)}
+                      className="absolute top-2 right-2 text-red-500 hover:text-red-700 transition-colors bg-white rounded-full p-1"
+                      title="Delete activity"
+                    >
+                      <i className="fas fa-trash text-sm"></i>
+                    </button>
                   </div>
                 ))}
               </div>
@@ -561,7 +663,6 @@ export default function SkillDevelopmentAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Add PMKVY Item</h2>
               <button
                 onClick={() => setIsPMKVYModalOpen(false)}
-                disabled={isSubmitting}
                 className="text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50"
               >
                 <i className="text-xl fas fa-times"></i>
@@ -643,14 +744,12 @@ export default function SkillDevelopmentAdmin() {
                 <button
                   type="button"
                   onClick={() => setIsPMKVYModalOpen(false)}
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-white transition-colors rounded-lg bg-primary hover:bg-primary-dark disabled:opacity-50"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit'}
@@ -669,7 +768,6 @@ export default function SkillDevelopmentAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Add HPKVN Item</h2>
               <button
                 onClick={() => setIsHPKVNModalOpen(false)}
-                disabled={isSubmitting}
                 className="text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50"
               >
                 <i className="text-xl fas fa-times"></i>
@@ -736,14 +834,12 @@ export default function SkillDevelopmentAdmin() {
                 <button
                   type="button"
                   onClick={() => setIsHPKVNModalOpen(false)}
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-white transition-colors rounded-lg bg-primary hover:bg-primary-dark disabled:opacity-50"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit'}
@@ -762,7 +858,6 @@ export default function SkillDevelopmentAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Add Job Role</h2>
               <button
                 onClick={() => setIsJobRoleModalOpen(false)}
-                disabled={isSubmitting}
                 className="text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50"
               >
                 <i className="text-xl fas fa-times"></i>
@@ -831,14 +926,12 @@ export default function SkillDevelopmentAdmin() {
                 <button
                   type="button"
                   onClick={() => setIsJobRoleModalOpen(false)}
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-white transition-colors rounded-lg bg-primary hover:bg-primary-dark disabled:opacity-50"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit'}
@@ -857,7 +950,6 @@ export default function SkillDevelopmentAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Add Webinar/Workshop</h2>
               <button
                 onClick={() => setIsWebinarModalOpen(false)}
-                disabled={isSubmitting}
                 className="text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50"
               >
                 <i className="text-xl fas fa-times"></i>
@@ -917,14 +1009,12 @@ export default function SkillDevelopmentAdmin() {
                 <button
                   type="button"
                   onClick={() => setIsWebinarModalOpen(false)}
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-white transition-colors rounded-lg bg-primary hover:bg-primary-dark disabled:opacity-50"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit'}
@@ -943,7 +1033,6 @@ export default function SkillDevelopmentAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Add Past Activity</h2>
               <button
                 onClick={() => setIsActivityModalOpen(false)}
-                disabled={isSubmitting}
                 className="text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50"
               >
                 <i className="text-xl fas fa-times"></i>
@@ -987,14 +1076,12 @@ export default function SkillDevelopmentAdmin() {
                 <button
                   type="button"
                   onClick={() => setIsActivityModalOpen(false)}
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
                   className="flex-1 px-6 py-3 text-white transition-colors rounded-lg bg-primary hover:bg-primary-dark disabled:opacity-50"
                 >
                   {isSubmitting ? 'Submitting...' : 'Submit'}

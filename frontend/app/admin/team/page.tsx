@@ -205,6 +205,14 @@ export default function TeamAdmin() {
   // Board of Directors handlers
   const handleBoardSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Client-side validation
+    const trimmedName = boardFormData.name?.trim()
+    if (!trimmedName) {
+      alert('Please enter a name')
+      return
+    }
+    
     try {
       let imageBase64 = null
       if (boardFormData.image) {
@@ -215,17 +223,18 @@ export default function TeamAdmin() {
         })
       }
       await createBoardMember({
-        name: boardFormData.name,
-        image: imageBase64,
-        linkedinUrl: boardFormData.linkedinUrl,
-        description: boardFormData.description,
+        name: trimmedName,
+        image: imageBase64 || undefined,
+        linkedinUrl: boardFormData.linkedinUrl?.trim() || undefined,
+        description: boardFormData.description?.trim() || undefined,
       }).unwrap()
       refetchBoard()
       handleCloseBoardModal()
       alert('Board member added successfully!')
     } catch (error: any) {
       console.error('Error adding board member:', error)
-      alert(error?.data?.message || 'Failed to add board member')
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add board member'
+      alert(errorMessage)
     }
   }
 
@@ -238,6 +247,14 @@ export default function TeamAdmin() {
   // Advisors handlers
   const handleAdvisorSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Client-side validation
+    const trimmedName = advisorFormData.name?.trim()
+    if (!trimmedName) {
+      alert('Please enter a name')
+      return
+    }
+    
     try {
       let imageBase64 = null
       if (advisorFormData.image) {
@@ -248,17 +265,18 @@ export default function TeamAdmin() {
         })
       }
       await createAdvisor({
-        name: advisorFormData.name,
-        image: imageBase64,
-        linkedinUrl: advisorFormData.linkedinUrl,
-        description: advisorFormData.description,
+        name: trimmedName,
+        image: imageBase64 || undefined,
+        linkedinUrl: advisorFormData.linkedinUrl?.trim() || undefined,
+        description: advisorFormData.description?.trim() || undefined,
       }).unwrap()
       refetchAdvisors()
       handleCloseAdvisorModal()
       alert('Advisor added successfully!')
     } catch (error: any) {
       console.error('Error adding advisor:', error)
-      alert(error?.data?.message || 'Failed to add advisor')
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add advisor'
+      alert(errorMessage)
     }
   }
 
@@ -271,6 +289,14 @@ export default function TeamAdmin() {
   // Governing Body handlers
   const handleGoverningBodySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Client-side validation
+    const trimmedName = governingBodyFormData.name?.trim()
+    if (!trimmedName) {
+      alert('Please enter a name')
+      return
+    }
+    
     try {
       let imageBase64 = null
       if (governingBodyFormData.image) {
@@ -281,17 +307,18 @@ export default function TeamAdmin() {
         })
       }
       await createGoverningBodyMember({
-        name: governingBodyFormData.name,
-        image: imageBase64,
-        linkedinUrl: governingBodyFormData.linkedinUrl,
-        description: governingBodyFormData.description,
+        name: trimmedName,
+        image: imageBase64 || undefined,
+        linkedinUrl: governingBodyFormData.linkedinUrl?.trim() || undefined,
+        description: governingBodyFormData.description?.trim() || undefined,
       }).unwrap()
       refetchGoverningBody()
       handleCloseGoverningBodyModal()
       alert('Member added successfully!')
     } catch (error: any) {
       console.error('Error adding member:', error)
-      alert(error?.data?.message || 'Failed to add member')
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add member'
+      alert(errorMessage)
     }
   }
 
@@ -304,6 +331,14 @@ export default function TeamAdmin() {
   // Team handlers
   const handleTeamSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Client-side validation
+    const trimmedName = teamFormData.name?.trim()
+    if (!trimmedName) {
+      alert('Please enter a name')
+      return
+    }
+    
     try {
       let imageBase64 = null
       if (teamFormData.image) {
@@ -314,17 +349,18 @@ export default function TeamAdmin() {
         })
       }
       await createTeamMember({
-        name: teamFormData.name,
-        image: imageBase64,
-        linkedinUrl: teamFormData.linkedinUrl,
-        description: teamFormData.description,
+        name: trimmedName,
+        image: imageBase64 || undefined,
+        linkedinUrl: teamFormData.linkedinUrl?.trim() || undefined,
+        description: teamFormData.description?.trim() || undefined,
       }).unwrap()
       refetchTeamMembers()
       handleCloseTeamModal()
       alert('Team member added successfully!')
     } catch (error: any) {
       console.error('Error adding team member:', error)
-      alert(error?.data?.message || 'Failed to add team member')
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add team member'
+      alert(errorMessage)
     }
   }
 
@@ -355,6 +391,19 @@ export default function TeamAdmin() {
   // Faculty Member handlers
   const handleFacultyMemberSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Client-side validation
+    if (!facultyMemberFormData.projectId) {
+      alert('Please select a project')
+      return
+    }
+    
+    const trimmedName = facultyMemberFormData.name?.trim()
+    if (!trimmedName) {
+      alert('Please enter a name')
+      return
+    }
+    
     try {
       let imageBase64 = null
       if (facultyMemberFormData.image) {
@@ -366,17 +415,18 @@ export default function TeamAdmin() {
       }
       await createAffiliatedFaculty({
         projectId: facultyMemberFormData.projectId,
-        name: facultyMemberFormData.name,
-        image: imageBase64,
-        linkedinUrl: facultyMemberFormData.linkedinUrl,
-        description: facultyMemberFormData.description,
+        name: trimmedName,
+        image: imageBase64 || undefined,
+        linkedinUrl: facultyMemberFormData.linkedinUrl?.trim() || undefined,
+        description: facultyMemberFormData.description?.trim() || undefined,
       }).unwrap()
       refetchFaculty()
       handleCloseFacultyMemberModal()
       alert('Faculty member added successfully!')
     } catch (error: any) {
       console.error('Error adding faculty member:', error)
-      alert(error?.data?.message || 'Failed to add faculty member')
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add faculty member'
+      alert(errorMessage)
     }
   }
 

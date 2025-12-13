@@ -1,19 +1,30 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  useGetPressQuery,
+  useCreatePressMutation,
+  useDeletePressMutation,
+} from '@/lib/store/api'
 
 interface PressArticle {
-  id: string
+  _id: string
   title: string
-  description: string | null
-  image: string | null
-  pdf: string | null
-  link: string | null
+  description?: string | null
+  image?: string | null
+  pdf?: string | null
+  link?: string | null
 }
 
 export default function PressAdmin() {
   const [isModalOpen, setIsModalOpen] = useState(false)
-  const [pressArticles, setPressArticles] = useState<PressArticle[]>([])
+  
+  // RTK Query hooks
+  const { data: pressData, refetch: refetchPress } = useGetPressQuery({})
+  const [createPress] = useCreatePressMutation()
+  const [deletePress] = useDeletePressMutation()
+  
+  const pressArticles = pressData?.data || []
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -23,7 +34,6 @@ export default function PressAdmin() {
   })
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [pdfPreview, setPdfPreview] = useState<string | null>(null)
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target
@@ -73,7 +83,13 @@ export default function PressAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+
+    // Client-side validation
+    const trimmedTitle = formData.title?.trim()
+    if (!trimmedTitle) {
+      alert('Please enter a title')
+      return
+    }
 
     try {
       let imageBase64 = null
@@ -94,19 +110,13 @@ export default function PressAdmin() {
         })
       }
 
-      const newArticle: PressArticle = {
-        id: Date.now().toString(),
-        title: formData.title,
-        description: formData.description || null,
-        image: imageBase64,
-        pdf: pdfBase64,
-        link: formData.link || null,
-      }
-
-      setPressArticles(prev => [...prev, newArticle])
-      
-      // TODO: Add API call to submit the form data
-      // await fetch('/api/press', { method: 'POST', body: JSON.stringify(newArticle) })
+      await createPress({
+        title: trimmedTitle,
+        description: formData.description?.trim() || undefined,
+        image: imageBase64 || undefined,
+        pdf: pdfBase64 || undefined,
+        link: formData.link?.trim() || undefined,
+      }).unwrap()
       
       // Reset form and close modal
       setFormData({
@@ -119,37 +129,41 @@ export default function PressAdmin() {
       setImagePreview(null)
       setPdfPreview(null)
       setIsModalOpen(false)
+      refetchPress()
       
       // Show success message
       alert('Press release added successfully!')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding press release:', error)
-      alert('Failed to add press release. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add press release'
+      alert(errorMessage)
     }
   }
 
   const handleCloseModal = () => {
-    if (!isSubmitting) {
-      setIsModalOpen(false)
-      setFormData({
-        title: '',
-        description: '',
-        image: null,
-        pdf: null,
-        link: '',
-      })
-      setImagePreview(null)
-      setPdfPreview(null)
-    }
+    setIsModalOpen(false)
+    setFormData({
+      title: '',
+      description: '',
+      image: null,
+      pdf: null,
+      link: '',
+    })
+    setImagePreview(null)
+    setPdfPreview(null)
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this press release?')) {
-      setPressArticles(prev => prev.filter(article => article.id !== id))
-      // TODO: Add API call to delete
-      // await fetch(`/api/press/${id}`, { method: 'DELETE' })
+      try {
+        await deletePress(id).unwrap()
+        refetchPress()
+        alert('Press release deleted successfully!')
+      } catch (error: any) {
+        console.error('Error deleting press release:', error)
+        const errorMessage = error?.data?.message || error?.message || 'Failed to delete press release'
+        alert(errorMessage)
+      }
     }
   }
 
@@ -180,7 +194,7 @@ export default function PressAdmin() {
         ) : (
           <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
             {pressArticles.map((article) => (
-              <div key={article.id} className="p-4 border border-gray-200 rounded-lg hover:shadow-lg transition-shadow">
+              <div key={article._id} className="p-4 border border-gray-200 rounded-lg hover:shadow-lg transition-shadow">
                 {article.image && (
                   <div className="w-full h-48 mb-3 overflow-hidden bg-gray-200 rounded-lg">
                     <img

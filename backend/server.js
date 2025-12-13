@@ -169,6 +169,9 @@ const governingBodyRoutes = require('./routes/governingBodyRoutes');
 const teamMemberRoutes = require('./routes/teamMemberRoutes');
 const facultyProjectRoutes = require('./routes/facultyProjectRoutes');
 const affiliatedFacultyRoutes = require('./routes/affiliatedFacultyRoutes');
+const pressRoutes = require('./routes/pressRoutes');
+const brochureRoutes = require('./routes/brochureRoutes');
+const galleryRoutes = require('./routes/galleryRoutes');
 
 // API Routes
 app.use('/api/auth', authRoutes);
@@ -202,6 +205,56 @@ app.use('/api/team/governing-body', governingBodyRoutes);
 app.use('/api/team/members', teamMemberRoutes);
 app.use('/api/team/faculty-projects', facultyProjectRoutes);
 app.use('/api/team/affiliated-faculty', affiliatedFacultyRoutes);
+app.use('/api/press', pressRoutes);
+app.use('/api/brochure', brochureRoutes);
+app.use('/api/gallery', galleryRoutes);
+
+// API Info endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    success: true,
+    message: 'iHub Backend API',
+    version: '1.0.0',
+    timestamp: new Date().toISOString(),
+    endpoints: {
+      health: '/api/health',
+      auth: '/api/auth',
+      blog: '/api/blog',
+      events: '/api/events',
+      announcements: '/api/announcements',
+      faculty: '/api/faculty',
+      researchers: '/api/researchers',
+      staff: '/api/staff',
+      newsletter: '/api/newsletter',
+      contact: '/api/contact',
+      courses: '/api/courses',
+      'call-for-innovation': '/api/call-for-innovation',
+      careers: '/api/careers',
+      incubation: '/api/incubation',
+      collaborations: '/api/collaborations',
+      projects: '/api/projects',
+      news: '/api/news',
+      workshops: '/api/workshops',
+      tenders: '/api/tenders',
+      visits: '/api/visits',
+      infrastructure: '/api/infrastructure',
+      'procurement-policy': '/api/procurement-policy',
+      'audit-reports': '/api/audit-reports',
+      'skill-development': '/api/skill-development',
+      team: {
+        'board-members': '/api/team/board-members',
+        advisors: '/api/team/advisors',
+        'governing-body': '/api/team/governing-body',
+        members: '/api/team/members',
+        'faculty-projects': '/api/team/faculty-projects',
+        'affiliated-faculty': '/api/team/affiliated-faculty'
+      },
+      press: '/api/press',
+      brochure: '/api/brochure',
+      gallery: '/api/gallery'
+    }
+  });
+});
 
 // Health check
 app.get('/api/health', (req, res) => {

@@ -7,25 +7,36 @@ import Link from '@tiptap/extension-link'
 import { TextStyle } from '@tiptap/extension-text-style'
 import { Color } from '@tiptap/extension-color'
 import TextAlign from '@tiptap/extension-text-align'
+import {
+  useGetProposalsQuery,
+  useCreateProposalMutation,
+  useDeleteProposalMutation,
+  useGetFellowshipsQuery,
+  useCreateFellowshipMutation,
+  useDeleteFellowshipMutation,
+  useGetOngoingProjectsQuery,
+  useCreateOngoingProjectMutation,
+  useDeleteOngoingProjectMutation,
+} from '@/lib/store/api'
 
 // Interfaces for different item types
 interface Proposal {
-  id: string
+  _id: string
   name: string
   currentDate: string
   lastDateToApply: string
-  pdf: string | null
+  pdf?: string | null
 }
 
 interface Fellowship {
-  id: string
+  _id: string
   name: string
   description: string
-  pdf: string | null
+  pdf?: string | null
 }
 
 interface OngoingProject {
-  id: string
+  _id: string
   sno: number
   title: string
   instituteName: string
@@ -34,7 +45,7 @@ interface OngoingProject {
   amountSanctioned: string
   durationFrom: string
   durationTo: string
-  pdf: string | null
+  pdf?: string | null
 }
 
 export default function ResearchDevelopmentAdmin() {
@@ -45,10 +56,22 @@ export default function ResearchDevelopmentAdmin() {
   const [isFellowshipModalOpen, setIsFellowshipModalOpen] = useState(false)
   const [isProjectModalOpen, setIsProjectModalOpen] = useState(false)
 
-  // State for data
-  const [proposals, setProposals] = useState<Proposal[]>([])
-  const [fellowships, setFellowships] = useState<Fellowship[]>([])
-  const [projects, setProjects] = useState<OngoingProject[]>([])
+  // RTK Query hooks
+  const { data: proposalsData, refetch: refetchProposals } = useGetProposalsQuery({})
+  const [createProposal, { isLoading: isCreatingProposal }] = useCreateProposalMutation()
+  const [deleteProposal] = useDeleteProposalMutation()
+  
+  const { data: fellowshipsData, refetch: refetchFellowships } = useGetFellowshipsQuery({})
+  const [createFellowship, { isLoading: isCreatingFellowship }] = useCreateFellowshipMutation()
+  const [deleteFellowship] = useDeleteFellowshipMutation()
+  
+  const { data: projectsData, refetch: refetchProjects } = useGetOngoingProjectsQuery({})
+  const [createOngoingProject, { isLoading: isCreatingProject }] = useCreateOngoingProjectMutation()
+  const [deleteOngoingProject] = useDeleteOngoingProjectMutation()
+  
+  const proposals = proposalsData?.data || []
+  const fellowships = fellowshipsData?.data || []
+  const projects = projectsData?.data || []
 
   // Form states for Call for Proposals
   const [proposalFormData, setProposalFormData] = useState({
@@ -80,7 +103,6 @@ export default function ResearchDevelopmentAdmin() {
   })
   const [projectPdfPreview, setProjectPdfPreview] = useState<string | null>(null)
 
-  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const tabs = [
     { id: 'call-for-proposals', label: 'Call for Proposals' },
@@ -148,7 +170,18 @@ export default function ResearchDevelopmentAdmin() {
 
   const handleProposalSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    // Client-side validation
+    const trimmedName = proposalFormData.name?.trim()
+    if (!trimmedName) {
+      alert('Please enter a proposal name')
+      return
+    }
+    if (!proposalFormData.lastDateToApply) {
+      alert('Please select a last date to apply')
+      return
+    }
+    
     try {
       let pdfBase64 = null
       if (proposalFormData.pdf) {
@@ -160,21 +193,20 @@ export default function ResearchDevelopmentAdmin() {
         })
       }
 
-      const newProposal: Proposal = {
-        id: Date.now().toString(),
-        name: proposalFormData.name,
+      await createProposal({
+        name: trimmedName,
         currentDate: proposalFormData.currentDate,
         lastDateToApply: proposalFormData.lastDateToApply,
-        pdf: pdfBase64,
-      }
-
-      setProposals(prev => [...prev, newProposal])
+        pdf: pdfBase64 || undefined,
+      }).unwrap()
+      
       handleCloseProposalModal()
-    } catch (error) {
+      refetchProposals()
+      alert('Proposal added successfully!')
+    } catch (error: any) {
       console.error('Error submitting proposal:', error)
-      alert('Failed to submit proposal')
-    } finally {
-      setIsSubmitting(false)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to submit proposal'
+      alert(errorMessage)
     }
   }
 
@@ -189,9 +221,17 @@ export default function ResearchDevelopmentAdmin() {
     setProposalPdfPreview(null)
   }
 
-  const handleDeleteProposal = (id: string) => {
+  const handleDeleteProposal = async (id: string) => {
     if (confirm('Are you sure you want to delete this proposal?')) {
-      setProposals(prev => prev.filter(p => p.id !== id))
+      try {
+        await deleteProposal(id).unwrap()
+        refetchProposals()
+        alert('Proposal deleted successfully!')
+      } catch (error: any) {
+        console.error('Error deleting proposal:', error)
+        const errorMessage = error?.data?.message || error?.message || 'Failed to delete proposal'
+        alert(errorMessage)
+      }
     }
   }
 
@@ -225,7 +265,18 @@ export default function ResearchDevelopmentAdmin() {
 
   const handleFellowshipSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    // Client-side validation
+    const trimmedName = fellowshipFormData.name?.trim()
+    if (!trimmedName) {
+      alert('Please enter a fellowship name')
+      return
+    }
+    if (!fellowshipFormData.description?.trim()) {
+      alert('Please enter a description')
+      return
+    }
+    
     try {
       let pdfBase64 = null
       if (fellowshipFormData.pdf) {
@@ -237,20 +288,19 @@ export default function ResearchDevelopmentAdmin() {
         })
       }
 
-      const newFellowship: Fellowship = {
-        id: Date.now().toString(),
-        name: fellowshipFormData.name,
+      await createFellowship({
+        name: trimmedName,
         description: fellowshipFormData.description,
-        pdf: pdfBase64,
-      }
-
-      setFellowships(prev => [...prev, newFellowship])
+        pdf: pdfBase64 || undefined,
+      }).unwrap()
+      
       handleCloseFellowshipModal()
-    } catch (error) {
+      refetchFellowships()
+      alert('Fellowship added successfully!')
+    } catch (error: any) {
       console.error('Error submitting fellowship:', error)
-      alert('Failed to submit fellowship')
-    } finally {
-      setIsSubmitting(false)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to submit fellowship'
+      alert(errorMessage)
     }
   }
 
@@ -267,9 +317,17 @@ export default function ResearchDevelopmentAdmin() {
     }
   }
 
-  const handleDeleteFellowship = (id: string) => {
+  const handleDeleteFellowship = async (id: string) => {
     if (confirm('Are you sure you want to delete this fellowship?')) {
-      setFellowships(prev => prev.filter(f => f.id !== id))
+      try {
+        await deleteFellowship(id).unwrap()
+        refetchFellowships()
+        alert('Fellowship deleted successfully!')
+      } catch (error: any) {
+        console.error('Error deleting fellowship:', error)
+        const errorMessage = error?.data?.message || error?.message || 'Failed to delete fellowship'
+        alert(errorMessage)
+      }
     }
   }
 
@@ -303,7 +361,29 @@ export default function ResearchDevelopmentAdmin() {
 
   const handleProjectSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    // Client-side validation
+    const trimmedTitle = projectFormData.title?.trim()
+    if (!trimmedTitle) {
+      alert('Please enter a project title')
+      return
+    }
+    if (!projectFormData.instituteName?.trim()) {
+      alert('Please enter an institute name')
+      return
+    }
+    if (!projectFormData.principalInvestigator?.trim()) {
+      alert('Please enter a principal investigator')
+      return
+    }
+    if (!projectFormData.amountSanctioned) {
+      alert('Please enter an amount sanctioned')
+      return
+    }
+    if (!projectFormData.durationFrom || !projectFormData.durationTo) {
+      alert('Please select project duration')
+      return
+    }
 
     try {
       let pdfBase64 = null
@@ -319,26 +399,25 @@ export default function ResearchDevelopmentAdmin() {
         ? Math.max(...projects.map(p => p.sno)) + 1 
         : 1
 
-      const newProject: OngoingProject = {
-        id: Date.now().toString(),
+      await createOngoingProject({
         sno: nextSno,
-        title: projectFormData.title,
-        instituteName: projectFormData.instituteName,
-        principalInvestigator: projectFormData.principalInvestigator,
-        coPrincipalInvestigator: projectFormData.coPrincipalInvestigator,
+        title: trimmedTitle,
+        instituteName: projectFormData.instituteName.trim(),
+        principalInvestigator: projectFormData.principalInvestigator.trim(),
+        coPrincipalInvestigator: projectFormData.coPrincipalInvestigator?.trim() || undefined,
         amountSanctioned: projectFormData.amountSanctioned,
         durationFrom: projectFormData.durationFrom,
         durationTo: projectFormData.durationTo,
-        pdf: pdfBase64,
-      }
-
-      setProjects(prev => [...prev, newProject])
+        pdf: pdfBase64 || undefined,
+      }).unwrap()
+      
       handleCloseProjectModal()
-    } catch (error) {
+      refetchProjects()
+      alert('Project added successfully!')
+    } catch (error: any) {
       console.error('Error submitting project:', error)
-      alert('Failed to submit project')
-    } finally {
-      setIsSubmitting(false)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to submit project'
+      alert(errorMessage)
     }
   }
 
@@ -357,9 +436,17 @@ export default function ResearchDevelopmentAdmin() {
     setProjectPdfPreview(null)
   }
 
-  const handleDeleteProject = (id: string) => {
+  const handleDeleteProject = async (id: string) => {
     if (confirm('Are you sure you want to delete this project?')) {
-      setProjects(prev => prev.filter(p => p.id !== id))
+      try {
+        await deleteOngoingProject(id).unwrap()
+        refetchProjects()
+        alert('Project deleted successfully!')
+      } catch (error: any) {
+        console.error('Error deleting project:', error)
+        const errorMessage = error?.data?.message || error?.message || 'Failed to delete project'
+        alert(errorMessage)
+      }
     }
   }
 
@@ -426,7 +513,7 @@ export default function ResearchDevelopmentAdmin() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {proposals.map((proposal) => (
                   <div
-                    key={proposal.id}
+                    key={proposal._id}
                     className="p-6 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 transition-all duration-300 bg-white/50 backdrop-blur-sm"
                   >
                     <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-xl mb-4 mx-auto">
@@ -451,7 +538,7 @@ export default function ResearchDevelopmentAdmin() {
                       </a>
                     )}
                     <button
-                      onClick={() => handleDeleteProposal(proposal.id)}
+                      onClick={() => handleDeleteProposal(proposal._id)}
                       className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
                     >
                       <i className="fas fa-trash mr-2"></i>
@@ -495,7 +582,7 @@ export default function ResearchDevelopmentAdmin() {
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {fellowships.map((fellowship) => (
                   <div
-                    key={fellowship.id}
+                    key={fellowship._id}
                     className="glass-strong rounded-xl p-6 border-2 border-primary/10 hover:shadow-lg transition-all duration-300"
                   >
                     <div className="flex items-center justify-center w-16 h-16 bg-primary/10 rounded-xl mb-4 mx-auto">
@@ -520,7 +607,7 @@ export default function ResearchDevelopmentAdmin() {
                       </a>
                     )}
                     <button
-                      onClick={() => handleDeleteFellowship(fellowship.id)}
+                      onClick={() => handleDeleteFellowship(fellowship._id)}
                       className="w-full px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors text-sm"
                     >
                       <i className="fas fa-trash mr-2"></i>
@@ -578,7 +665,7 @@ export default function ResearchDevelopmentAdmin() {
                   <tbody>
                     {projects.map((project, index) => (
                       <tr
-                        key={project.id}
+                        key={project._id}
                         className={`border-b border-primary/10 ${
                           index % 2 === 0 ? 'bg-white/60' : 'bg-primary-lighter/30'
                         }`}
@@ -594,7 +681,7 @@ export default function ResearchDevelopmentAdmin() {
                         </td>
                         <td className="px-4 py-3">
                           <button
-                            onClick={() => handleDeleteProject(project.id)}
+                            onClick={() => handleDeleteProject(project._id)}
                             className="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 transition-colors text-sm"
                           >
                             <i className="fas fa-trash mr-1"></i>
@@ -619,7 +706,7 @@ export default function ResearchDevelopmentAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Add Proposal</h2>
               <button
                 onClick={handleCloseProposalModal}
-                disabled={isSubmitting}
+                disabled={isCreatingProposal}
                 className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
               >
                 <i className="fas fa-times text-xl"></i>
@@ -711,17 +798,17 @@ export default function ResearchDevelopmentAdmin() {
                 <button
                   type="button"
                   onClick={handleCloseProposalModal}
-                  disabled={isSubmitting}
+                  disabled={isCreatingProposal}
                   className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isCreatingProposal}
                   className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? (
+                  {isCreatingProposal ? (
                     <>
                       <i className="fas fa-spinner fa-spin mr-2"></i>
                       Submitting...
@@ -747,7 +834,7 @@ export default function ResearchDevelopmentAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Add Fellowship</h2>
               <button
                 onClick={handleCloseFellowshipModal}
-                disabled={isSubmitting}
+                disabled={isCreatingFellowship}
                 className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
               >
                 <i className="fas fa-times text-xl"></i>
@@ -857,17 +944,17 @@ export default function ResearchDevelopmentAdmin() {
                 <button
                   type="button"
                   onClick={handleCloseFellowshipModal}
-                  disabled={isSubmitting}
+                  disabled={isCreatingFellowship}
                   className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isCreatingFellowship}
                   className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? (
+                  {isCreatingFellowship ? (
                     <>
                       <i className="fas fa-spinner fa-spin mr-2"></i>
                       Submitting...
@@ -893,7 +980,7 @@ export default function ResearchDevelopmentAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Add Project</h2>
               <button
                 onClick={handleCloseProjectModal}
-                disabled={isSubmitting}
+                disabled={isCreatingProject}
                 className="text-gray-400 hover:text-gray-600 transition-colors disabled:opacity-50"
               >
                 <i className="fas fa-times text-xl"></i>
@@ -1064,17 +1151,17 @@ export default function ResearchDevelopmentAdmin() {
                 <button
                   type="button"
                   onClick={handleCloseProjectModal}
-                  disabled={isSubmitting}
+                  disabled={isCreatingProject}
                   className="flex-1 px-6 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isCreatingProject}
                   className="flex-1 px-6 py-3 bg-primary text-white rounded-lg hover:bg-primary-dark transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {isSubmitting ? (
+                  {isCreatingProject ? (
                     <>
                       <i className="fas fa-spinner fa-spin mr-2"></i>
                       Submitting...

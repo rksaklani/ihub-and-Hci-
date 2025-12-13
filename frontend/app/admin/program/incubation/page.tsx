@@ -1,27 +1,40 @@
 'use client'
 
 import { useState } from 'react'
+import {
+  useGetStartupsQuery,
+  useCreateStartupMutation,
+  useDeleteStartupMutation,
+  useGetCategoriesQuery,
+  useCreateCategoryMutation,
+  useDeleteCategoryMutation,
+} from '@/lib/store/api'
 
 interface Startup {
-  id: string
+  _id: string
   name: string
   category: string
   location: string
   link: string
-  image: string | null
+  image?: string | null
 }
 
 export default function IncubationAdmin() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false)
-  const [startups, setStartups] = useState<Startup[]>([])
-  const [thematicCategories, setThematicCategories] = useState<string[]>([
-    'Assistive Technologies',
-    'Device Led Technologies',
-    'Experience Technologies',
-    'Gen AI (Audio)',
-    'Device Technologies',
-  ])
+  
+  // RTK Query hooks
+  const { data: startupsData, refetch: refetchStartups } = useGetStartupsQuery({})
+  const [createStartup, { isLoading: isCreatingStartup }] = useCreateStartupMutation()
+  const [deleteStartup] = useDeleteStartupMutation()
+  
+  const { data: categoriesData, refetch: refetchCategories } = useGetCategoriesQuery()
+  const [createCategory, { isLoading: isCreatingCategory }] = useCreateCategoryMutation()
+  const [deleteCategory] = useDeleteCategoryMutation()
+  
+  const startups = startupsData?.data || []
+  const categories = categoriesData?.data || []
+  const thematicCategories = categories.map((cat: { name: string }) => cat.name)
   const [formData, setFormData] = useState({
     name: '',
     category: '',
@@ -33,8 +46,6 @@ export default function IncubationAdmin() {
   const [categoryFormData, setCategoryFormData] = useState({
     categoryName: '',
   })
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [isCategorySubmitting, setIsCategorySubmitting] = useState(false)
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     const { name, value } = e.target
@@ -62,7 +73,25 @@ export default function IncubationAdmin() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsSubmitting(true)
+    
+    // Client-side validation
+    const trimmedName = formData.name?.trim()
+    if (!trimmedName) {
+      alert('Please enter a startup name')
+      return
+    }
+    if (!formData.category) {
+      alert('Please select a category')
+      return
+    }
+    if (!formData.location?.trim()) {
+      alert('Please enter a location')
+      return
+    }
+    if (!formData.link?.trim()) {
+      alert('Please enter a website link')
+      return
+    }
 
     try {
       let imageBase64 = null
@@ -74,19 +103,13 @@ export default function IncubationAdmin() {
         })
       }
 
-      const newStartup: Startup = {
-        id: Date.now().toString(),
-        name: formData.name,
+      await createStartup({
+        name: trimmedName,
         category: formData.category,
-        location: formData.location,
-        link: formData.link,
-        image: imageBase64,
-      }
-
-      setStartups(prev => [...prev, newStartup])
-      
-      // TODO: Add API call to submit the form data
-      // await fetch('/api/incubation/startups', { method: 'POST', body: JSON.stringify(newStartup) })
+        location: formData.location.trim(),
+        link: formData.link.trim(),
+        image: imageBase64 || undefined,
+      }).unwrap()
       
       // Reset form and close modal
       setFormData({
@@ -98,14 +121,14 @@ export default function IncubationAdmin() {
       })
       setImagePreview(null)
       setIsModalOpen(false)
+      refetchStartups()
       
       // Show success message
       alert('Startup added successfully!')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding startup:', error)
-      alert('Failed to add startup. Please try again.')
-    } finally {
-      setIsSubmitting(false)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add startup'
+      alert(errorMessage)
     }
   }
 
@@ -123,51 +146,53 @@ export default function IncubationAdmin() {
     }
   }
 
-  const handleDelete = (id: string) => {
+  const handleDelete = async (id: string) => {
     if (confirm('Are you sure you want to delete this startup?')) {
-      setStartups(prev => prev.filter(startup => startup.id !== id))
-      // TODO: Add API call to delete
-      // await fetch(`/api/incubation/startups/${id}`, { method: 'DELETE' })
+      try {
+        await deleteStartup(id).unwrap()
+        refetchStartups()
+        alert('Startup deleted successfully!')
+      } catch (error: any) {
+        console.error('Error deleting startup:', error)
+        const errorMessage = error?.data?.message || error?.message || 'Failed to delete startup'
+        alert(errorMessage)
+      }
     }
   }
 
   const handleCategorySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsCategorySubmitting(true)
+
+    const categoryName = categoryFormData.categoryName.trim()
+    
+    if (!categoryName) {
+      alert('Please enter a category name')
+      return
+    }
+
+    if (thematicCategories.includes(categoryName)) {
+      alert('This category already exists')
+      return
+    }
 
     try {
-      const categoryName = categoryFormData.categoryName.trim()
-      
-      if (!categoryName) {
-        alert('Please enter a category name')
-        return
-      }
-
-      if (thematicCategories.includes(categoryName)) {
-        alert('This category already exists')
-        return
-      }
-
-      setThematicCategories(prev => [...prev, categoryName])
-      
-      // TODO: Add API call to submit the category
-      // await fetch('/api/incubation/categories', { method: 'POST', body: JSON.stringify({ name: categoryName }) })
+      await createCategory({ name: categoryName }).unwrap()
       
       // Reset form and close modal
       setCategoryFormData({ categoryName: '' })
       setIsCategoryModalOpen(false)
+      refetchCategories()
       
       // Show success message
       alert('Category added successfully!')
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error adding category:', error)
-      alert('Failed to add category. Please try again.')
-    } finally {
-      setIsCategorySubmitting(false)
+      const errorMessage = error?.data?.message || error?.message || 'Failed to add category'
+      alert(errorMessage)
     }
   }
 
-  const handleDeleteCategory = (category: string) => {
+  const handleDeleteCategory = async (category: string) => {
     // Check if any startup is using this category
     const startupsUsingCategory = startups.filter(startup => startup.category === category)
     
@@ -177,9 +202,15 @@ export default function IncubationAdmin() {
     }
 
     if (confirm(`Are you sure you want to delete the category "${category}"?`)) {
-      setThematicCategories(prev => prev.filter(cat => cat !== category))
-      // TODO: Add API call to delete
-      // await fetch(`/api/incubation/categories/${category}`, { method: 'DELETE' })
+      try {
+        await deleteCategory(category).unwrap()
+        refetchCategories()
+        alert('Category deleted successfully!')
+      } catch (error: any) {
+        console.error('Error deleting category:', error)
+        const errorMessage = error?.data?.message || error?.message || 'Failed to delete category'
+        alert(errorMessage)
+      }
     }
   }
 
@@ -239,7 +270,7 @@ export default function IncubationAdmin() {
         ) : (
           <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
             {startups.map((startup) => (
-              <div key={startup.id} className="p-5 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 transition-all duration-300 bg-white/50 backdrop-blur-sm">
+              <div key={startup._id} className="p-5 border-2 border-gray-200 rounded-xl hover:shadow-xl hover:border-primary/30 transition-all duration-300 bg-white/50 backdrop-blur-sm">
                 {startup.image && (
                   <div className="w-full h-48 mb-3 overflow-hidden bg-gray-200 rounded-lg">
                     <img
@@ -252,7 +283,7 @@ export default function IncubationAdmin() {
                 <div className="flex items-start justify-between mb-3">
                   <h3 className="text-lg font-bold text-primary flex-1">{startup.name}</h3>
                   <button
-                    onClick={() => handleDelete(startup.id)}
+                    onClick={() => handleDelete(startup._id)}
                     className="ml-2 text-red-500 hover:text-red-700 transition-colors"
                     title="Delete startup"
                   >
@@ -293,7 +324,7 @@ export default function IncubationAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Add Startup</h2>
               <button
                 onClick={handleCloseModal}
-                disabled={isSubmitting}
+                disabled={isCreatingStartup}
                 className="text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50"
               >
                 <i className="text-xl fas fa-times"></i>
@@ -401,17 +432,17 @@ export default function IncubationAdmin() {
                 <button
                   type="button"
                   onClick={handleCloseModal}
-                  disabled={isSubmitting}
+                  disabled={isCreatingStartup}
                   className="flex-1 px-6 py-3 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={isSubmitting}
+                  disabled={isCreatingStartup}
                   className="flex-1 px-6 py-3 text-white transition-colors rounded-lg bg-primary hover:bg-primary-dark disabled:opacity-50"
                 >
-                  {isSubmitting ? (
+                  {isCreatingStartup ? (
                     <>
                       <i className="mr-2 fas fa-spinner fa-spin"></i>
                       Submitting...
@@ -437,7 +468,7 @@ export default function IncubationAdmin() {
               <h2 className="text-2xl font-bold text-gray-900">Manage Thematic Categories</h2>
               <button
                 onClick={handleCloseCategoryModal}
-                disabled={isCategorySubmitting}
+                disabled={isCreatingCategory}
                 className="text-gray-400 transition-colors hover:text-gray-600 disabled:opacity-50"
               >
                 <i className="text-xl fas fa-times"></i>
@@ -464,10 +495,10 @@ export default function IncubationAdmin() {
                     />
                     <button
                       type="submit"
-                      disabled={isCategorySubmitting}
+                      disabled={isCreatingCategory}
                       className="px-6 py-3 text-white transition-colors rounded-lg bg-primary hover:bg-primary-dark disabled:opacity-50"
                     >
-                      {isCategorySubmitting ? (
+                      {isCreatingCategory ? (
                         <>
                           <i className="mr-2 fas fa-spinner fa-spin"></i>
                           Adding...
@@ -513,7 +544,7 @@ export default function IncubationAdmin() {
               <div className="pt-4">
                 <button
                   onClick={handleCloseCategoryModal}
-                  disabled={isCategorySubmitting}
+                  disabled={isCreatingCategory}
                   className="w-full px-6 py-3 text-gray-700 transition-colors border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50"
                 >
                   Close

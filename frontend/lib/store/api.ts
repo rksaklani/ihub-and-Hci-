@@ -1,5 +1,6 @@
 import { createApi, BaseQueryFn } from '@reduxjs/toolkit/query/react';
-import axios, { AxiosRequestConfig, AxiosError } from '../axios';
+import axios from '../axios';
+import type { AxiosRequestConfig, AxiosError } from 'axios';
 
 // Custom base query using axios
 const axiosBaseQuery =
@@ -8,17 +9,18 @@ const axiosBaseQuery =
       url: string;
       method?: AxiosRequestConfig['method'];
       data?: AxiosRequestConfig['data'];
+      body?: AxiosRequestConfig['data'];
       params?: AxiosRequestConfig['params'];
     },
     unknown,
     unknown
   > =>
-  async ({ url, method = 'GET', data, params }) => {
+  async ({ url, method = 'GET', data, body, params }) => {
     try {
       const result = await axios({
         url,
         method,
-        data,
+        data: data || body, // Support both 'data' and 'body' for backward compatibility
         params,
       });
       return { data: result.data };
@@ -62,6 +64,9 @@ export const apiSlice = createApi({
     'TeamMember',
     'FacultyProject',
     'AffiliatedFaculty',
+    'Press',
+    'Brochure',
+    'Gallery',
   ],
   endpoints: (builder) => ({
     // Courses
@@ -675,7 +680,7 @@ export const apiSlice = createApi({
       query: (data) => ({
         url: '/skill-development',
         method: 'POST',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['SkillDevelopment'],
     }),
@@ -683,7 +688,7 @@ export const apiSlice = createApi({
       query: ({ id, ...data }) => ({
         url: `/skill-development/${id}`,
         method: 'PUT',
-        body: data,
+        data: data,
       }),
       invalidatesTags: (result, error, { id }) => [{ type: 'SkillDevelopment', id }],
     }),
@@ -695,6 +700,114 @@ export const apiSlice = createApi({
       invalidatesTags: ['SkillDevelopment'],
     }),
 
+    // Press
+    getPress: builder.query({
+      query: (params = {}) => ({
+        url: '/press',
+        params,
+      }),
+      providesTags: ['Press'],
+    }),
+    getPressItem: builder.query({
+      query: (id) => `/press/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Press', id }],
+    }),
+    createPress: builder.mutation({
+      query: (data) => ({
+        url: '/press',
+        method: 'POST',
+        data: data,
+      }),
+      invalidatesTags: ['Press'],
+    }),
+    updatePress: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/press/${id}`,
+        method: 'PUT',
+        data: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Press', id }],
+    }),
+    deletePress: builder.mutation({
+      query: (id) => ({
+        url: `/press/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Press'],
+    }),
+
+    // Brochure
+    getBrochures: builder.query({
+      query: (params = {}) => ({
+        url: '/brochure',
+        params,
+      }),
+      providesTags: ['Brochure'],
+    }),
+    getBrochure: builder.query({
+      query: (id) => `/brochure/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Brochure', id }],
+    }),
+    createBrochure: builder.mutation({
+      query: (data) => ({
+        url: '/brochure',
+        method: 'POST',
+        data: data,
+      }),
+      invalidatesTags: ['Brochure'],
+    }),
+    updateBrochure: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/brochure/${id}`,
+        method: 'PUT',
+        data: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Brochure', id }],
+    }),
+    deleteBrochure: builder.mutation({
+      query: (id) => ({
+        url: `/brochure/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Brochure'],
+    }),
+
+    // Gallery
+    getGallery: builder.query({
+      query: (params = {}) => ({
+        url: '/gallery',
+        params,
+      }),
+      providesTags: ['Gallery'],
+    }),
+    getGalleryItem: builder.query({
+      query: (id) => `/gallery/${id}`,
+      providesTags: (result, error, id) => [{ type: 'Gallery', id }],
+    }),
+    createGallery: builder.mutation({
+      query: (data) => ({
+        url: '/gallery',
+        method: 'POST',
+        data: data,
+      }),
+      invalidatesTags: ['Gallery'],
+    }),
+    updateGallery: builder.mutation({
+      query: ({ id, ...data }) => ({
+        url: `/gallery/${id}`,
+        method: 'PUT',
+        data: data,
+      }),
+      invalidatesTags: (result, error, { id }) => [{ type: 'Gallery', id }],
+    }),
+    deleteGallery: builder.mutation({
+      query: (id) => ({
+        url: `/gallery/${id}`,
+        method: 'DELETE',
+      }),
+      invalidatesTags: ['Gallery'],
+    }),
+
     // Team - Board Members
     getBoardMembers: builder.query({
       query: () => '/team/board-members',
@@ -704,7 +817,7 @@ export const apiSlice = createApi({
       query: (data) => ({
         url: '/team/board-members',
         method: 'POST',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['BoardMember'],
     }),
@@ -712,7 +825,7 @@ export const apiSlice = createApi({
       query: ({ id, ...data }) => ({
         url: `/team/board-members/${id}`,
         method: 'PUT',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['BoardMember'],
     }),
@@ -733,7 +846,7 @@ export const apiSlice = createApi({
       query: (data) => ({
         url: '/team/advisors',
         method: 'POST',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['Advisor'],
     }),
@@ -741,7 +854,7 @@ export const apiSlice = createApi({
       query: ({ id, ...data }) => ({
         url: `/team/advisors/${id}`,
         method: 'PUT',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['Advisor'],
     }),
@@ -762,7 +875,7 @@ export const apiSlice = createApi({
       query: (data) => ({
         url: '/team/governing-body',
         method: 'POST',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['GoverningBodyMember'],
     }),
@@ -770,7 +883,7 @@ export const apiSlice = createApi({
       query: ({ id, ...data }) => ({
         url: `/team/governing-body/${id}`,
         method: 'PUT',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['GoverningBodyMember'],
     }),
@@ -791,7 +904,7 @@ export const apiSlice = createApi({
       query: (data) => ({
         url: '/team/members',
         method: 'POST',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['TeamMember'],
     }),
@@ -799,7 +912,7 @@ export const apiSlice = createApi({
       query: ({ id, ...data }) => ({
         url: `/team/members/${id}`,
         method: 'PUT',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['TeamMember'],
     }),
@@ -820,7 +933,7 @@ export const apiSlice = createApi({
       query: (data) => ({
         url: '/team/faculty-projects',
         method: 'POST',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['FacultyProject'],
     }),
@@ -828,7 +941,7 @@ export const apiSlice = createApi({
       query: ({ id, ...data }) => ({
         url: `/team/faculty-projects/${id}`,
         method: 'PUT',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['FacultyProject'],
     }),
@@ -849,7 +962,7 @@ export const apiSlice = createApi({
       query: (data) => ({
         url: '/team/affiliated-faculty',
         method: 'POST',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['AffiliatedFaculty'],
     }),
@@ -857,7 +970,7 @@ export const apiSlice = createApi({
       query: ({ id, ...data }) => ({
         url: `/team/affiliated-faculty/${id}`,
         method: 'PUT',
-        body: data,
+        data: data,
       }),
       invalidatesTags: ['AffiliatedFaculty'],
     }),
@@ -1000,6 +1113,24 @@ export const {
   useCreateAffiliatedFacultyMutation,
   useUpdateAffiliatedFacultyMutation,
   useDeleteAffiliatedFacultyMutation,
+  // Press
+  useGetPressQuery,
+  useGetPressItemQuery,
+  useCreatePressMutation,
+  useUpdatePressMutation,
+  useDeletePressMutation,
+  // Brochure
+  useGetBrochuresQuery,
+  useGetBrochureQuery,
+  useCreateBrochureMutation,
+  useUpdateBrochureMutation,
+  useDeleteBrochureMutation,
+  // Gallery
+  useGetGalleryQuery,
+  useGetGalleryItemQuery,
+  useCreateGalleryMutation,
+  useUpdateGalleryMutation,
+  useDeleteGalleryMutation,
 } = apiSlice;
 
 export default apiSlice;
